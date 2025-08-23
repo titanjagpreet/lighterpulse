@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getRouteForInput } from "@/utils/validation";
 import { BackgroundRippleEffect } from "@/components/aceternity/ripple-effect";
 import TrueFocus from "@/components/reactbits/TrueFocus";
 import { PlaceholdersAndVanishInput } from "@/components/aceternity/vanish-input";
@@ -96,19 +98,38 @@ export function PlaceholdersAndVanishInputBox() {
         "Try: 0xabc...123, tx hash, or block height"
     ];
 
+    const router = useRouter();
+    const [error, setError] = useState("");
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.value);
+        console.log("Input:", e.target.value);
     };
+
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log("submitted");
+
+        const inputEl = e.currentTarget.querySelector("input") as HTMLInputElement;
+        const value = inputEl.value;
+
+        const route = getRouteForInput(value);
+        
+        if (route) {
+            router.prefetch(route);
+            router.push(route);
+        } else {
+            setError("Invalid input. Please enter a valid address, transaction hash, or block number.");
+        }
     };
+
     return (
-        <PlaceholdersAndVanishInput
-            placeholders={placeholders}
-            onChange={handleChange}
-            onSubmit={onSubmit}
-        />
+        <div>
+            <PlaceholdersAndVanishInput
+                placeholders={placeholders}
+                onChange={handleChange}
+                onSubmit={onSubmit}
+            />
+            {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
+        </div>
     );
 }
 
@@ -266,7 +287,7 @@ export function LandingPage() {
                         <div>
                             <h3 className="text-xl font-semibold text-white mb-3">About Me</h3>
                             <p className="text-neutral-400 leading-relaxed">
-                                Full-stack developer passionate about Web3, DeFi, and building the decentralized future. 
+                                Full-stack developer passionate about Web3, DeFi, and building the decentralized future.
                                 Specialized in smart contract development, DApp architecture, and blockchain integration.
                             </p>
                         </div>
@@ -308,6 +329,6 @@ export function LandingPage() {
         </div>
 
         {/* Footer */}
-        <LandingFooter/>
+        <LandingFooter />
     </>
 }
