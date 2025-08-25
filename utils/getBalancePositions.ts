@@ -15,7 +15,7 @@ export interface Position {
     direction: "Long" | "Short";
     pnl: number;
     returnPct: number;
-    margin: number; // ✅ Added allocated margin
+    margin: number;
 }
 
 export interface AccountData {
@@ -69,7 +69,7 @@ export async function getAccountData(address: string): Promise<AccountData | nul
                 direction: pos.sign === 1 ? "Long" : "Short",
                 pnl,
                 returnPct,
-                margin, // ✅ Include in return
+                margin,
             };
         });
 

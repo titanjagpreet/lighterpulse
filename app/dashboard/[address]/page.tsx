@@ -1,6 +1,7 @@
 "use client";
 import { DashboardParams, PageProps } from "@/types/routes";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
     Search,
     Wallet,
@@ -29,38 +30,6 @@ import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getAccountData, AccountData, KPIData, Position } from "@/utils/getBalancePositions";
 
-// Mock data for prototype (fallback)
-const mockTransactions = [
-    {
-        hash: "0x1234...5678",
-        type: "Deposit",
-        amount: "+$5,000.00",
-        timestamp: "2 min ago",
-        status: "Confirmed"
-    },
-    {
-        hash: "0x8765...4321",
-        type: "Withdrawal",
-        amount: "-$2,500.00",
-        timestamp: "15 min ago",
-        status: "Pending"
-    },
-    {
-        hash: "0xabcd...efgh",
-        type: "Trade",
-        amount: "+$1,234.56",
-        timestamp: "1 hour ago",
-        status: "Confirmed"
-    },
-    {
-        hash: "0x9876...5432",
-        type: "Collateral",
-        amount: "+$3,000.00",
-        timestamp: "3 hours ago",
-        status: "Confirmed"
-    }
-];
-
 export default function DashboardPage({ params }: PageProps<DashboardParams>) {
     const [activeTab, setActiveTab] = useState("overview");
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -71,9 +40,9 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
     const [error, setError] = useState<string | null>(null);
 
     const sidebarItems = [
-        { id: "dashboard", label: "Dashboard", icon: Home, active: true },
-        { id: "fundings", label: "Fundings", icon: DollarSign },
-        { id: "analytics", label: "Analytics", icon: BarChart3 }
+        { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
+        { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: "/funding-comparison" },
+        { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" }
     ];
 
     // Fetch account data
@@ -177,7 +146,7 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                 <div className="flex items-center justify-between px-4 sm:px-6 py-4">
                     {/* Logo */}
                     <div className="flex items-center space-x-2 sm:space-x-3">
-                        <button 
+                        <button
                             onClick={() => setSidebarOpen(!sidebarOpen)}
                             className="sm:hidden p-1 text-neutral-400 hover:text-white transition-colors"
                         >
@@ -228,20 +197,36 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                 )}>
                     <div className="p-4">
                         {sidebarItems.map((item) => (
-                            <button
-                                key={item.id}
-                                className={cn(
-                                    "w-full flex items-center space-x-3 px-3 py-3 rounded-lg mb-2 transition-all duration-200",
-                                    item.active
-                                        ? "bg-blue-600 text-white"
-                                        : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
-                                )}
-                            >
-                                <item.icon className="w-5 h-5 flex-shrink-0" />
-                                {!sidebarCollapsed && (
-                                    <span className="text-sm font-medium">{item.label}</span>
-                                )}
-                            </button>
+                            item.type === "link" ? (
+                                <Link
+                                    key={item.id}
+                                    href={item.href || ""}
+                                    className={cn(
+                                        "w-full flex items-center space-x-3 px-3 py-3 rounded-lg mb-2 transition-all duration-200",
+                                        "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                                    )}
+                                >
+                                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                                    {!sidebarCollapsed && (
+                                        <span className="text-sm font-medium">{item.label}</span>
+                                    )}
+                                </Link>
+                            ) : (
+                                <button
+                                    key={item.id}
+                                    className={cn(
+                                        "w-full flex items-center space-x-3 px-3 py-3 rounded-lg mb-2 transition-all duration-200",
+                                        item.active
+                                            ? "bg-blue-600 text-white"
+                                            : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                                    )}
+                                >
+                                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                                    {!sidebarCollapsed && (
+                                        <span className="text-sm font-medium">{item.label}</span>
+                                    )}
+                                </button>
+                            )
                         ))}
                     </div>
                 </div>
