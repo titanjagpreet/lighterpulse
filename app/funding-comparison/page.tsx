@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Search, ChevronDown, Info } from "lucide-react";
+import { Search, ChevronDown, Info, Menu, X, ArrowLeft } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getFundingData } from "@/utils/getFundingData";
+import Link from "next/link";
 
 type Timeframe = "1h" | "8h" | "1d" | "1w" | "1y";
 
@@ -24,7 +25,23 @@ export default function FundingComparisonPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [timeframe, setTimeframe] = useState<Timeframe>("8h");
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userAddress, setUserAddress] = useState<string>("");
 
+    // Get user address from URL query parameter
+    useEffect(() => {
+        const getAddressFromUrl = () => {
+            if (typeof window !== 'undefined') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const fromAddress = urlParams.get('from');
+                if (fromAddress) {
+                    setUserAddress(fromAddress);
+                }
+            }
+        };
+
+        getAddressFromUrl();
+    }, []);
 
     // Fetch funding data
     useEffect(() => {
@@ -102,10 +119,15 @@ export default function FundingComparisonPage() {
         item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Sort alphabetically
-    const sortedData = [...filteredData].sort((a, b) => 
-        a.symbol.localeCompare(b.symbol)
-    );
+    // Sort by market_id (maintain the order from API)
+    const sortedData = [...filteredData].sort((a, b) => {
+        // Find the market_id for each symbol from the lighter data
+        const aItem = fundingData.lighter.find((item: any) => item.symbol === a.symbol);
+        const bItem = fundingData.lighter.find((item: any) => item.symbol === b.symbol);
+        
+        if (!aItem || !bItem) return 0;
+        return aItem.market_id - bItem.market_id;
+    });
 
     // Format percentage
     const formatPercentage = (value: number, showSign: boolean = false): string => {
@@ -153,7 +175,47 @@ export default function FundingComparisonPage() {
 
     return (
         <div className="min-h-screen bg-[#121218] text-white">
-            <div className="p-4 sm:p-8">
+            {/* Navbar */}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121218]/80 backdrop-blur-md border-b border-neutral-800">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4">
+                    {/* Logo */}
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="sm:hidden p-1 text-neutral-400 hover:text-white transition-colors"
+                        >
+                            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
+                        <img
+                            src="https://lighter.xyz/_astro/logo.DJnDsPC3.svg"
+                            alt="LighterPulse"
+                            className="w-6 h-6 sm:w-8 sm:h-8"
+                        />
+                        <span className="text-lg sm:text-xl font-bold text-white">LighterPulse</span>
+                    </div>
+
+                    {/* Right Navigation */}
+                    <div className="flex items-center space-x-2 sm:space-x-4">
+                        <Link 
+                            href={userAddress ? `/dashboard/${userAddress}` : "/dashboard/0x0000000000000000000000000000000000000000"}
+                            className="flex items-center space-x-1 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors"
+                        >
+                            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span>Dashboard</span>
+                        </Link>
+                        <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                            Explorer
+                        </button>
+                        <button className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">
+                            Donate
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Main Content */}
+            <div className="pt-20">
+                <div className="p-4 sm:p-8">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-4 sm:space-y-0">
@@ -300,6 +362,7 @@ export default function FundingComparisonPage() {
                             )}
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
