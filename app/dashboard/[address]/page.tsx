@@ -41,7 +41,7 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
 
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
-        { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: "/funding-comparison" },
+        { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${params.address}` },
         { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" }
     ];
 
