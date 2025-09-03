@@ -59,7 +59,43 @@ export async function getFundingData(): Promise<
 
         const symbols = lighter.map((item) => item.symbol);
 
-        // Arbitrage Suggestions
+        // Compute differences + suggestions for Lighter vs Others
+        const computeDiffsWithSuggestion = (target: FundingRate[], base: FundingRate[], exchangeName: string) =>
+            base.map((light) => {
+                const match = target.find((t) => t.symbol === light.symbol);
+                if (!match) return null;
+
+                const getSuggestion = (lightRate: number, otherRate: number) => {
+                    if (lightRate > otherRate) return `Short on Lighter, Long on ${exchangeName}`;
+                    if (lightRate < otherRate) return `Long on Lighter, Short on ${exchangeName}`;
+                    return "No clear arbitrage opportunity";
+                };
+
+                return {
+                    symbol: light.symbol,
+                    market_id: light.market_id,
+                    diffs: {
+                        "1h": Number((light.rate_1h - match.rate_1h).toFixed(8)),
+                        "8h": Number((light.rate_8h - match.rate_8h).toFixed(8)),
+                        "1d": Number((light.rate_1d - match.rate_1d).toFixed(8)),
+                        "1w": Number((light.rate_1w - match.rate_1w).toFixed(8)),
+                        "1y": Number((light.rate_1y - match.rate_1y).toFixed(8)),
+                    },
+                    suggestions: {
+                        "1h": getSuggestion(light.rate_1h, match.rate_1h),
+                        "8h": getSuggestion(light.rate_8h, match.rate_8h),
+                        "1d": getSuggestion(light.rate_1d, match.rate_1d),
+                        "1w": getSuggestion(light.rate_1w, match.rate_1w),
+                        "1y": getSuggestion(light.rate_1y, match.rate_1y),
+                    }
+                };
+            }).filter(Boolean);
+
+        const lighter_binance_arb = computeDiffsWithSuggestion(binance, lighter, "Binance");
+        const lighter_bybit_arb = computeDiffsWithSuggestion(bybit, lighter, "Bybit");
+        const lighter_hl_arb = computeDiffsWithSuggestion(hyperliquid, lighter, "Hyperliquid");
+
+        // Main Arbitrage (lowest vs highest rate globally)
         const arbitrage: ArbitrageSuggestion[] = symbols
             .map((symbol) => {
                 const rates = [
@@ -78,26 +114,6 @@ export async function getFundingData(): Promise<
                 return { symbol, longExchange, shortExchange };
             })
             .filter(Boolean) as ArbitrageSuggestion[];
-
-        // Lighter vs Others Arbitrage Differences
-        const computeDiffs = (target: FundingRate[], base: FundingRate[]) =>
-            base.map((light) => {
-                const match = target.find((t) => t.symbol === light.symbol);
-                if (!match) return null;
-                return {
-                    symbol: light.symbol,
-                    market_id: light.market_id,
-                    diff_1h: Number((light.rate_1h - match.rate_1h).toFixed(8)),
-                    diff_8h: Number((light.rate_8h - match.rate_8h).toFixed(8)),
-                    diff_1d: Number((light.rate_1d - match.rate_1d).toFixed(8)),
-                    diff_1w: Number((light.rate_1w - match.rate_1w).toFixed(8)),
-                    diff_1y: Number((light.rate_1y - match.rate_1y).toFixed(8)),
-                };
-            }).filter(Boolean);
-
-        const lighter_binance_arb = computeDiffs(binance, lighter);
-        const lighter_bybit_arb = computeDiffs(bybit, lighter);
-        const lighter_hl_arb = computeDiffs(hyperliquid, lighter);
 
         return {
             binance,
