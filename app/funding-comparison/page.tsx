@@ -5,6 +5,7 @@ import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getFundingData } from "@/utils/getFundingData";
 import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Timeframe = "1h" | "8h" | "1d" | "1w" | "1y";
 
@@ -17,6 +18,9 @@ interface FundingTableData {
     lighter_binance_arb: number;
     lighter_bybit_arb: number;
     lighter_hl_arb: number;
+    lighter_binance_suggestion: string;
+    lighter_bybit_suggestion: string;
+    lighter_hl_suggestion: string;
 }
 
 export default function FundingComparisonPage() {
@@ -78,13 +82,27 @@ export default function FundingComparisonPage() {
 
     // Get arbitrage difference based on timeframe
     const getArbByTimeframe = (arbItem: any, timeframe: Timeframe): number => {
+        if (!arbItem || !arbItem.diffs) return 0;
         switch (timeframe) {
-            case "1h": return arbItem.diff_1h;
-            case "8h": return arbItem.diff_8h;
-            case "1d": return arbItem.diff_1d;
-            case "1w": return arbItem.diff_1w;
-            case "1y": return arbItem.diff_1y;
-            default: return arbItem.diff_8h;
+            case "1h": return arbItem.diffs["1h"];
+            case "8h": return arbItem.diffs["8h"];
+            case "1d": return arbItem.diffs["1d"];
+            case "1w": return arbItem.diffs["1w"];
+            case "1y": return arbItem.diffs["1y"];
+            default: return arbItem.diffs["8h"];
+        }
+    };
+
+    // Get arbitrage suggestion based on timeframe
+    const getArbSuggestion = (arbItem: any, timeframe: Timeframe): string => {
+        if (!arbItem || !arbItem.suggestions) return "No suggestion available";
+        switch (timeframe) {
+            case "1h": return arbItem.suggestions["1h"];
+            case "8h": return arbItem.suggestions["8h"];
+            case "1d": return arbItem.suggestions["1d"];
+            case "1w": return arbItem.suggestions["1w"];
+            case "1y": return arbItem.suggestions["1y"];
+            default: return arbItem.suggestions["8h"];
         }
     };
 
@@ -110,6 +128,9 @@ export default function FundingComparisonPage() {
                 lighter_binance_arb: lighter_binance_arb ? getArbByTimeframe(lighter_binance_arb, timeframe) : 0,
                 lighter_bybit_arb: lighter_bybit_arb ? getArbByTimeframe(lighter_bybit_arb, timeframe) : 0,
                 lighter_hl_arb: lighter_hl_arb ? getArbByTimeframe(lighter_hl_arb, timeframe) : 0,
+                lighter_binance_suggestion: lighter_binance_arb ? getArbSuggestion(lighter_binance_arb, timeframe) : "No suggestion available",
+                lighter_bybit_suggestion: lighter_bybit_arb ? getArbSuggestion(lighter_bybit_arb, timeframe) : "No suggestion available",
+                lighter_hl_suggestion: lighter_hl_arb ? getArbSuggestion(lighter_hl_arb, timeframe) : "No suggestion available",
             };
         });
     };
@@ -174,9 +195,10 @@ export default function FundingComparisonPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#121218] text-white">
-            {/* Navbar */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121218]/80 backdrop-blur-md border-b border-neutral-800">
+        <TooltipProvider>
+            <div className="min-h-screen bg-[#121218] text-white">
+                {/* Navbar */}
+                <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121218]/80 backdrop-blur-md border-b border-neutral-800">
                 <div className="flex items-center justify-between px-4 sm:px-6 py-4">
                     {/* Logo */}
                     <div className="flex items-center space-x-2 sm:space-x-3">
@@ -309,12 +331,23 @@ export default function FundingComparisonPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
-                                                    <span className={cn(
-                                                        "text-sm font-medium",
-                                                        getValueColor(item.lighter_binance_arb, true)
-                                                    )}>
-                                                        {formatPercentage(item.lighter_binance_arb, true)}
-                                                    </span>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className={cn(
+                                                                "text-sm font-medium cursor-help",
+                                                                getValueColor(item.lighter_binance_arb, true)
+                                                            )}>
+                                                                {formatPercentage(item.lighter_binance_arb, true)}
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent 
+                                                            side="top" 
+                                                            className="bg-neutral-900 border border-neutral-700 text-white max-w-xs p-2"
+                                                            sideOffset={5}
+                                                        >
+                                                            <p className="text-xs text-neutral-300">{item.lighter_binance_suggestion}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
                                                     <span className={cn(
@@ -325,12 +358,23 @@ export default function FundingComparisonPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
-                                                    <span className={cn(
-                                                        "text-sm font-medium",
-                                                        getValueColor(item.lighter_bybit_arb, true)
-                                                    )}>
-                                                        {formatPercentage(item.lighter_bybit_arb, true)}
-                                                    </span>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className={cn(
+                                                                "text-sm font-medium cursor-help",
+                                                                getValueColor(item.lighter_bybit_arb, true)
+                                                            )}>
+                                                                {formatPercentage(item.lighter_bybit_arb, true)}
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent 
+                                                            side="top" 
+                                                            className="bg-neutral-900 border border-neutral-700 text-white max-w-xs p-2"
+                                                            sideOffset={5}
+                                                        >
+                                                            <p className="text-xs text-neutral-300">{item.lighter_bybit_suggestion}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
                                                     <span className={cn(
@@ -341,12 +385,23 @@ export default function FundingComparisonPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
-                                                    <span className={cn(
-                                                        "text-sm font-medium",
-                                                        getValueColor(item.lighter_hl_arb, true)
-                                                    )}>
-                                                        {formatPercentage(item.lighter_hl_arb, true)}
-                                                    </span>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className={cn(
+                                                                "text-sm font-medium cursor-help",
+                                                                getValueColor(item.lighter_hl_arb, true)
+                                                            )}>
+                                                                {formatPercentage(item.lighter_hl_arb, true)}
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent 
+                                                            side="top" 
+                                                            className="bg-neutral-900 border border-neutral-700 text-white max-w-xs p-2"
+                                                            sideOffset={5}
+                                                        >
+                                                            <p className="text-xs text-neutral-300">{item.lighter_hl_suggestion}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
                                                 </td>
                                             </tr>
                                         ))}
@@ -366,5 +421,6 @@ export default function FundingComparisonPage() {
                 </div>
             </div>
         </div>
+        </TooltipProvider>
     );
 }
