@@ -24,7 +24,8 @@ import {
     Target,
     Zap,
     Menu,
-    X
+    X,
+    Megaphone
 } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,8 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
         { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${params.address}` },
-        { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" }
+        { id: "announcements", label: "Announcements", icon: Megaphone, type: "link", href: `/announcements?from=${params.address}` },
+        { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" },
     ];
 
     // Fetch account data
