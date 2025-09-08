@@ -13,6 +13,7 @@ export default function ExplorerPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [searchError, setSearchError] = useState("");
     const router = useRouter();
 
     // Fetch explorer data
@@ -38,23 +39,41 @@ export default function ExplorerPage() {
         fetchData();
     }, []);
 
-    // Handle search functionality
+    // search
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!searchTerm.trim()) return;
+        setSearchError("");
+        
+        if (!searchTerm.trim()) {
+            setSearchError("Please enter a block number or transaction hash");
+            return;
+        }
 
         const trimmedSearch = searchTerm.trim();
         
-        // Check if it's a block number (numeric)
+        // Check for block number
         if (/^\d+$/.test(trimmedSearch)) {
+            const blockNumber = parseInt(trimmedSearch);
+            if (blockNumber < 0) {
+                setSearchError("Block number must be a positive integer");
+                return;
+            }
             router.push(`/explorer/block/${trimmedSearch}`);
-        } else {
-            // Assume it's a transaction hash
+        } 
+        // Check for transaction hash (hexadecimal string)
+        else if (/^[0-9a-fA-F]+$/.test(trimmedSearch)) {
+            if (trimmedSearch.length < 8) {
+                setSearchError("Transaction hash is too short");
+                return;
+            }
             router.push(`/explorer/tx/${trimmedSearch}`);
+        } 
+        else {
+            setSearchError("Invalid input. Please enter a valid block number (e.g., 12345) or transaction hash (e.g., b309ae44f654a648...)");
         }
     };
 
-    // Mock KPI data (you can replace with real API calls)
+    // Mock KPI data
     const kpiData = [
         {
             title: "Total Transactions",
@@ -163,8 +182,15 @@ export default function ExplorerPage() {
                                         type="text"
                                         placeholder="Search by block number or transaction hash..."
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full bg-neutral-900 border border-neutral-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        onChange={(e) => {
+                                            setSearchTerm(e.target.value);
+                                            if (searchError) setSearchError("");
+                                        }}
+                                        className={`w-full bg-neutral-900 border rounded-lg pl-10 pr-4 py-3 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:border-transparent ${
+                                            searchError 
+                                                ? "border-red-500 focus:ring-red-500" 
+                                                : "border-neutral-700 focus:ring-blue-500"
+                                        }`}
                                     />
                                     <button
                                         type="submit"
@@ -173,6 +199,12 @@ export default function ExplorerPage() {
                                         Search
                                     </button>
                                 </div>
+                                {searchError && (
+                                    <p className="mt-2 text-sm text-red-400 flex items-center">
+                                        <span className="mr-1">⚠️</span>
+                                        {searchError}
+                                    </p>
+                                )}
                             </form>
                         </div>
                     </div>
