@@ -51,22 +51,18 @@ export default function ExplorerPage() {
 
         const trimmedSearch = searchTerm.trim();
         
-        // Check for block number
-        if (/^\d+$/.test(trimmedSearch)) {
+        // Check for transaction hash first (hexadecimal string with length > 10)
+        if (/^[0-9a-fA-F]+$/.test(trimmedSearch) && trimmedSearch.length > 10) {
+            router.push(`/explorer/tx/${trimmedSearch}`);
+        }
+        // Check for block number (only if it's a short numeric string)
+        else if (/^\d+$/.test(trimmedSearch) && trimmedSearch.length <= 10) {
             const blockNumber = parseInt(trimmedSearch);
             if (blockNumber < 0) {
                 setSearchError("Block number must be a positive integer");
                 return;
             }
             router.push(`/explorer/block/${trimmedSearch}`);
-        } 
-        // Check for transaction hash (hexadecimal string)
-        else if (/^[0-9a-fA-F]+$/.test(trimmedSearch)) {
-            if (trimmedSearch.length < 8) {
-                setSearchError("Transaction hash is too short");
-                return;
-            }
-            router.push(`/explorer/tx/${trimmedSearch}`);
         } 
         else {
             setSearchError("Invalid input. Please enter a valid block number (e.g., 12345) or transaction hash (e.g., b309ae44f654a648...)");
