@@ -114,7 +114,6 @@ export function PlaceholdersAndVanishInputBox() {
         const route = getRouteForInput(value);
         
         if (route) {
-            router.prefetch(route);
             router.push(route);
         } else {
             setError("Invalid input. Please enter a valid address, transaction hash, or block number.");
