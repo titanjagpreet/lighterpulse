@@ -29,7 +29,8 @@ export async function getAccountData(address: string): Promise<AccountData | nul
             `https://mainnet.zklighter.elliot.ai/api/v1/account?by=l1_address&value=${address}`,
             {
                 headers: { accept: "application/json" },
-                cache: "no-store",
+                cache: "force-cache",
+                next: { revalidate: 30 }, // Cache for 30 seconds
             }
         );
 
@@ -39,12 +40,12 @@ export async function getAccountData(address: string): Promise<AccountData | nul
         const account = data?.accounts?.[0];
         if (!account) return null;
 
-        // ✅ Filter only open positions
+        // Filter only open positions
         const openPositions = (account.positions || []).filter(
             (pos: any) => parseFloat(pos.position_value) > 0
         );
 
-        // ✅ KPIs
+        // KPIs
         const collateral = parseFloat(account.cross_asset_value);
         const totalBalance = parseFloat(account.total_asset_value);
         const unrealizedPnl = openPositions.reduce(
@@ -53,12 +54,12 @@ export async function getAccountData(address: string): Promise<AccountData | nul
         );
         const roi = collateral > 0 ? (unrealizedPnl / collateral) * 100 : 0;
 
-        // ✅ Positions with return percentage + margin
+        // Positions
         const positions: Position[] = openPositions.map((pos: any) => {
             const positionValue = parseFloat(pos.position_value);
             const pnl = parseFloat(pos.unrealized_pnl);
             const returnPct = positionValue > 0 ? (pnl / positionValue) * 100 : 0;
-            const margin = parseFloat(pos.allocated_margin); // ✅ Added allocated margin
+            const margin = parseFloat(pos.allocated_margin);
 
             return {
                 symbol: pos.symbol,
