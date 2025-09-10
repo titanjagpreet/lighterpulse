@@ -25,7 +25,8 @@ import {
     Zap,
     Menu,
     X,
-    Megaphone
+    Megaphone,
+    TrendingDown
 } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -39,27 +40,38 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
     const [accountData, setAccountData] = useState<AccountData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [initialLoad, setInitialLoad] = useState(true);
 
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
         { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${params.address}` },
         { id: "announcements", label: "Announcements", icon: Megaphone, type: "link", href: `/announcements?from=${params.address}` },
+        { id: "exchange-stats", label: "Exchange Stats", icon: TrendingDown, type: "link", href: `/exchange-stats?from=${params.address}` },
         { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" },
     ];
 
-    // Fetch account data
+    // Fetch account data with optimized loading
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const data = await getAccountData(params.address);
+                
+                // Use Promise.race to timeout after 10 seconds
+                const timeoutPromise = new Promise<null>((_, reject) => 
+                    setTimeout(() => reject(new Error('Request timeout')), 10000)
+                );
+                
+                const dataPromise = getAccountData(params.address);
+                const data = await Promise.race([dataPromise, timeoutPromise]);
+                
                 setAccountData(data);
             } catch (err) {
                 setError("Failed to fetch account data");
                 console.error("Error fetching account data:", err);
             } finally {
                 setLoading(false);
+                setInitialLoad(false);
             }
         };
 
@@ -119,12 +131,50 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
     const kpis = accountData ? formatKPIs(accountData.kpis) : [];
     const positions = accountData ? formatPositions(accountData.positions) : [];
 
-    if (loading) {
+    // Show skeleton loading instead of full page loading
+    if (initialLoad && loading) {
         return (
-            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-neutral-400">Loading dashboard data...</p>
+            <div className="min-h-screen bg-[#121218] text-white">
+                {/* Navbar */}
+                <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121218]/80 backdrop-blur-md border-b border-neutral-800">
+                    <div className="flex items-center justify-between px-4 sm:px-6 py-4">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-neutral-700 rounded animate-pulse"></div>
+                            <div className="w-32 h-6 bg-neutral-700 rounded animate-pulse"></div>
+                        </div>
+                        <div className="flex items-center space-x-2 sm:space-x-4">
+                            <div className="w-16 h-8 bg-neutral-700 rounded animate-pulse"></div>
+                            <div className="w-16 h-8 bg-neutral-700 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+                </nav>
+
+                {/* Main Content Skeleton */}
+                <div className="flex pt-20">
+                    {/* Sidebar Skeleton */}
+                    <div className="w-64 bg-neutral-900 border-r border-neutral-800 p-4">
+                        {[1,2,3,4,5].map((i) => (
+                            <div key={i} className="w-full h-12 bg-neutral-800 rounded-lg mb-2 animate-pulse"></div>
+                        ))}
+                    </div>
+
+                    {/* Content Skeleton */}
+                    <div className="flex-1 p-4 sm:p-8">
+                        <div className="mb-8">
+                            <div className="w-48 h-8 bg-neutral-800 rounded animate-pulse mb-4"></div>
+                            <div className="w-96 h-4 bg-neutral-800 rounded animate-pulse"></div>
+                        </div>
+
+                        {/* KPI Cards Skeleton */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                            {[1,2,3,4].map((i) => (
+                                <div key={i} className="h-32 bg-neutral-900 rounded-2xl border border-neutral-800 animate-pulse"></div>
+                            ))}
+                        </div>
+
+                        {/* Content Skeleton */}
+                        <div className="w-full h-96 bg-neutral-900 rounded-2xl border border-neutral-800 animate-pulse"></div>
+                    </div>
                 </div>
             </div>
         );
@@ -375,11 +425,26 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                                             <div className="flex items-center justify-between mb-6">
                                                 <h3 className="text-lg font-semibold text-white">Open Positions</h3>
                                                 <div className="flex items-center space-x-4">
-                                                    <span className="text-neutral-400 text-sm">Total P&L: <span className="text-green-400 font-medium">+${accountData.kpis.unrealizedPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                                                    <span className="text-neutral-400 text-sm">Total P&L: <span className="text-green-400 font-medium">+${accountData?.kpis.unrealizedPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</span></span>
                                                     <button className="text-blue-400 hover:text-blue-300 text-sm">Close All</button>
                                                 </div>
                                             </div>
-                                            {positions.length > 0 ? (
+                                            {loading ? (
+                                                <div className="space-y-3">
+                                                    {[1,2,3].map((i) => (
+                                                        <div key={i} className="flex items-center justify-between p-3 bg-neutral-800 rounded-lg animate-pulse">
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-8 h-8 bg-neutral-700 rounded-lg"></div>
+                                                                <div className="space-y-2">
+                                                                    <div className="w-20 h-4 bg-neutral-700 rounded"></div>
+                                                                    <div className="w-16 h-3 bg-neutral-700 rounded"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-6 h-6 bg-neutral-700 rounded"></div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : positions.length > 0 ? (
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full min-w-[800px]">
                                                         <thead>
@@ -489,7 +554,7 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                                                             <Target className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                                                             <span className="text-neutral-300 text-sm sm:text-base">Open Positions</span>
                                                         </div>
-                                                        <span className="text-white font-medium text-sm sm:text-base">{accountData.kpis.openPositionsCount}</span>
+                                                        <span className="text-white font-medium text-sm sm:text-base">{accountData?.kpis.openPositionsCount || 0}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 bg-neutral-800 rounded-lg">
                                                         <div className="flex items-center space-x-3">
@@ -498,9 +563,9 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                                                         </div>
                                                         <span className={cn(
                                                             "font-medium text-sm sm:text-base",
-                                                            accountData.kpis.roi >= 0 ? "text-[#17A970]" : "text-[#FF384F]"
+                                                            (accountData?.kpis.roi || 0) >= 0 ? "text-[#17A970]" : "text-[#FF384F]"
                                                         )}>
-                                                            {accountData.kpis.roi >= 0 ? '+' : ''}{accountData.kpis.roi.toFixed(2)}%
+                                                            {(accountData?.kpis.roi || 0) >= 0 ? '+' : ''}{(accountData?.kpis.roi || 0).toFixed(2)}%
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 bg-neutral-800 rounded-lg">
@@ -508,14 +573,14 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                                                             <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
                                                             <span className="text-neutral-300 text-sm sm:text-base">Total Position Value</span>
                                                         </div>
-                                                        <span className="text-white font-medium text-sm sm:text-base">${accountData.kpis.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        <span className="text-white font-medium text-sm sm:text-base">${(accountData?.kpis.totalBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 bg-neutral-800 rounded-lg">
                                                         <div className="flex items-center space-x-3">
                                                             <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                                                             <span className="text-neutral-300 text-sm sm:text-base">Collateral</span>
                                                         </div>
-                                                        <span className="text-white font-medium text-sm sm:text-base">${accountData.kpis.collateral.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        <span className="text-white font-medium text-sm sm:text-base">${(accountData?.kpis.collateral || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 </div>
                                             </div>
