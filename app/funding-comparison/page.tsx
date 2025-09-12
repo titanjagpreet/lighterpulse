@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, ChevronDown, Info, Menu, X, ArrowLeft } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -23,29 +25,16 @@ interface FundingTableData {
     lighter_hl_suggestion: string;
 }
 
-export default function FundingComparisonPage() {
+function FundingComparisonContent() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [fundingData, setFundingData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [timeframe, setTimeframe] = useState<Timeframe>("8h");
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [userAddress, setUserAddress] = useState<string>("");
-
-    // Get user address from URL query parameter
-    const getAddressFromUrl = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fromAddress = urlParams.get('from');
-            if (fromAddress) {
-                setUserAddress(fromAddress);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        getAddressFromUrl();
-    }, [getAddressFromUrl]);
+    const searchParams = useSearchParams();
+    const userAddress = searchParams?.get('from') || "";
 
     // Fetch funding data
     const fetchData = useCallback(async () => {
@@ -429,5 +418,20 @@ export default function FundingComparisonPage() {
             </div>
         </div>
         </TooltipProvider>
+    );
+}
+
+export default function FundingComparisonPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-400">Loading funding data...</p>
+                </div>
+            </div>
+        }>
+            <FundingComparisonContent />
+        </Suspense>
     );
 }

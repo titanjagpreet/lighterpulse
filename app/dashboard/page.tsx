@@ -6,7 +6,7 @@ import { BackgroundRippleEffect } from "@/components/aceternity/ripple-effect";
 import TrueFocus from "@/components/reactbits/TrueFocus";
 import { PlaceholdersAndVanishInput } from "@/components/aceternity/vanish-input";
 
-export function PlaceholdersAndVanishInputBox() {
+function PlaceholdersAndVanishInputBox() {
     const placeholders = useMemo(() => [
         "Enter address, transaction hash, or block number",
         "Try: 0xabc...123, tx hash, or block height"

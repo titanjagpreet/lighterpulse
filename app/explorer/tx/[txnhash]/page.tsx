@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { 
     ArrowLeft, 
@@ -21,7 +21,8 @@ import { getTransactionDetails } from "@/utils/getTransaction";
 import { TxDetails } from "@/types/transaction";
 import Link from "next/link";
 
-export default function TransactionPage({ params }: { params: { txnhash: string } }) {
+export default function TransactionPage({ params }: { params: Promise<{ txnhash: string }> }) {
+    const resolvedParams = use(params);
     const [txDetails, setTxDetails] = useState<TxDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         try {
             setLoading(true);
             setError(null);
-            const data = await getTransactionDetails(params.txnhash);
+            const data = await getTransactionDetails(resolvedParams.txnhash);
             if (data) {
                 setTxDetails(data);
             } else {
@@ -45,7 +46,7 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         } finally {
             setLoading(false);
         }
-    }, [params.txnhash]);
+    }, [resolvedParams.txnhash]);
 
     useEffect(() => {
         fetchTxDetails();
@@ -113,17 +114,6 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         return statuses[status as keyof typeof statuses] || { text: "Unknown", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" };
     }, []);
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-neutral-400">Loading transaction details...</p>
-                </div>
-            </div>
-        );
-    }
-
     const { queuedTime, executedTime, expiredTime, statusBadge } = useMemo(() => {
         if (!txDetails) return { 
             queuedTime: { date: '', time: '', relative: '' }, 
@@ -138,6 +128,17 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
             statusBadge: getStatusBadge(txDetails.status)
         };
     }, [txDetails, formatTimestamp, getStatusBadge]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-400">Loading transaction details...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (error || !txDetails) {
         return (

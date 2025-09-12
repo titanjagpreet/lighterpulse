@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Menu, X, ArrowLeft, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -7,28 +8,15 @@ import { getExchangeStats } from "@/utils/getExchangeStats";
 import { ExchangeStat } from "@/types/excahngeStats";
 import Link from "next/link";
 
-export default function ExchangeStatsPage() {
+function ExchangeStatsContent() {
     const [exchangeData, setExchangeData] = useState<ExchangeStat[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [userAddress, setUserAddress] = useState<string>("");
+    const searchParams = useSearchParams();
+    const userAddress = searchParams?.get('from') || "";
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-
-    const getAddressFromUrl = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fromAddress = urlParams.get('from');
-            if (fromAddress) {
-                setUserAddress(fromAddress);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        getAddressFromUrl();
-    }, [getAddressFromUrl]);
 
     const fetchData = useCallback(async (isInitialLoad = false) => {
         try {
@@ -554,5 +542,20 @@ export default function ExchangeStatsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ExchangeStatsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-400">Loading exchange stats...</p>
+                </div>
+            </div>
+        }>
+            <ExchangeStatsContent />
+        </Suspense>
     );
 }

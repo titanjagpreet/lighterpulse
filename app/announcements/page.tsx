@@ -1,32 +1,19 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, ArrowLeft, Calendar, Clock } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getAnnouncements, Announcement } from "@/utils/getAnnouncements";
 import Link from "next/link";
 
-export default function AnnouncementsPage() {
+function AnnouncementsContent() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [userAddress, setUserAddress] = useState<string>("");
-
-    // Get user address from URL query parameter
-    const getAddressFromUrl = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fromAddress = urlParams.get('from');
-            if (fromAddress) {
-                setUserAddress(fromAddress);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        getAddressFromUrl();
-    }, [getAddressFromUrl]);
+    const searchParams = useSearchParams();
+    const userAddress = searchParams?.get('from') || "";
 
     // Fetch announcements data
     const fetchData = useCallback(async () => {
@@ -263,5 +250,20 @@ export default function AnnouncementsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AnnouncementsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-400">Loading announcements...</p>
+                </div>
+            </div>
+        }>
+            <AnnouncementsContent />
+        </Suspense>
     );
 }
