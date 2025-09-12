@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { getRouteForInput } from "@/utils/validation";
 import { BackgroundRippleEffect } from "@/components/aceternity/ripple-effect";
@@ -21,13 +21,18 @@ import {
     MobileNavMenu,
 } from "@/components/aceternity/navbar";
 
+// Lazy load heavy components
+const LazyGlowingEffectFeatures = lazy(() => Promise.resolve({ default: GlowingEffectFeatures }));
+const LazyProfileSection = lazy(() => Promise.resolve({ default: ProfileSection }));
+const LazyLandingFooter = lazy(() => Promise.resolve({ default: LandingFooter }));
+
 export function NavbarResizable() {
-    const navItems = [
+    const navItems = useMemo(() => [
         {
             name: "𝕏",
             link: "https://x.com/singhxbt",
         },
-    ];
+    ], []);
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -39,8 +44,8 @@ export function NavbarResizable() {
                     <NavbarLogo />
                     <NavItems items={navItems} />
                     <div className="flex items-center gap-4">
-                        <NavbarButton variant="primary">Explorer</NavbarButton>
-                        <NavbarButton variant="primary">Dashboard</NavbarButton>
+                        <NavbarButton variant="primary" href="/explorer">Explorer</NavbarButton>
+                        <NavbarButton variant="primary" href="/dashboard">Dashboard</NavbarButton>
                     </div>
                 </NavBody>
 
@@ -93,19 +98,19 @@ export function NavbarResizable() {
 }
 
 export function PlaceholdersAndVanishInputBox() {
-    const placeholders = [
+    const placeholders = useMemo(() => [
         "Enter address, transaction hash, or block number",
         "Try: 0xabc...123, tx hash, or block height"
-    ];
+    ], []);
 
     const router = useRouter();
     const [error, setError] = useState("");
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         console.log("Input:", e.target.value);
-    };
+    }, []);
 
-    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const onSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const inputEl = e.currentTarget.querySelector("input") as HTMLInputElement;
@@ -118,7 +123,7 @@ export function PlaceholdersAndVanishInputBox() {
         } else {
             setError("Invalid input. Please enter a valid address, transaction hash, or block number.");
         }
-    };
+    }, [router]);
 
     return (
         <div>
@@ -138,121 +143,44 @@ export function GlowingEffectFeatures() {
             <GridItem
                 area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
                 icon={<Box className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Real-Time On-Chain Data"
-                description="Stay ahead with live data updates from the Lighter protocol."
+                title="Dashboard Analytics"
+                description="Monitor your Lighter.xyz account with real-time balance tracking, position monitoring, and comprehensive portfolio insights."
             />
 
             <GridItem
                 area="md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]"
-                icon={<Settings className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Transaction Explorer"
-                description="Dive deep into all protocol transactions, and chain blocks"
+                icon={<Search className="h-4 w-4 text-black dark:text-neutral-400" />}
+                title="Block Explorer"
+                description="Explore Lighter.xyz blockchain with detailed transaction history, block information, and comprehensive on-chain data analysis."
             />
 
             <GridItem
                 area="md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]"
-                icon={<Lock className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Account Health Monitor"
-                description="Track your wallet balance, open positions, and overall exposure in real time."
+                icon={<Settings className="h-4 w-4 text-black dark:text-neutral-400" />}
+                title="Funding Comparison"
+                description="Compare funding rates across Lighter, Binance, Bybit, and Hyperliquid with real-time arbitrage opportunities and suggestions."
             />
 
             <GridItem
                 area="md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]"
                 icon={<Sparkles className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Interactive Analytics Dashboard"
-                description="Beautiful charts and visual insights to monitor your portfolio health."
+                title="Exchange Statistics"
+                description="Track Lighter.xyz trading pairs with live price data, volume metrics, and comprehensive market statistics."
             />
 
             <GridItem
                 area="md:[grid-area:3/1/4/13] xl:[grid-area:2/8/3/13]"
-                icon={<Search className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Live Balance & Positions"
-                description="Track your wallet balance, open positions, and overall exposure in real time."
+                icon={<Lock className="h-4 w-4 text-black dark:text-neutral-400" />}
+                title="Protocol Announcements"
+                description="Stay updated with the latest Lighter.xyz protocol updates, feature releases, and important community announcements."
             />
         </ul>
     );
 }
 
-interface GridItemProps {
-    area: string;
-    icon: React.ReactNode;
-    title: string;
-    description: React.ReactNode;
-}
-
-const GridItem = ({ area, icon, title, description }: GridItemProps) => {
+// Profile Section Component
+function ProfileSection() {
     return (
-        <li className={`min-h-[14rem] list-none ${area}`}>
-            <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
-                <GlowingEffect
-                    spread={40}
-                    glow={true}
-                    disabled={false}
-                    proximity={64}
-                    inactiveZone={0.01}
-                />
-                <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
-                    <div className="relative flex flex-1 flex-col justify-between gap-3">
-                        <div className="w-fit rounded-lg border border-gray-600 p-2">
-                            {icon}
-                        </div>
-                        <div className="space-y-3">
-                            <h3 className="-tracking-4 pt-0.5 font-sans text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                                {title}
-                            </h3>
-                            <h2 className="font-sans text-sm/[1.125rem] text-black md:text-base/[1.375rem] dark:text-neutral-400 [&_b]:md:font-semibold [&_strong]:md:font-semibold">
-                                {description}
-                            </h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </li>
-    );
-};
-
-
-export function LandingPage() {
-    return <>
-        <NavbarResizable />
-        <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#121218]">
-            <BackgroundRippleEffect />
-
-            <div className="w-full px-4 text-center">
-                {/* Heading */}
-                <h2 className="relative z-10 mx-auto max-w-4xl text-center text-xl font-bold mb-8 text-neutral-800 md:text-3xl lg:text-6xl dark:text-neutral-100">
-                    Your Complete Lighter.xyz Hub
-                </h2>
-
-                {/* Animated text */}
-                <TrueFocus
-                    sentence="Dashboard, Explorer & Insights."
-                    manualMode={false}
-                    blurAmount={4}
-                    borderColor="#17A970"
-                    animationDuration={0.7}
-                    pauseBetweenAnimations={0.5}
-                />
-
-                {/* Subtext */}
-                <p className="relative z-10 mx-auto mt-6 max-w-xl text-center text-neutral-700 dark:text-neutral-400">
-                    Track, analyze, and explore everything about Lighter.xyz in one place.
-                </p>
-
-                {/* Input Box */}
-                <div className="mt-14 flex justify-center">
-                    <div className="w-full max-w-lg">
-                        <PlaceholdersAndVanishInputBox />
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div className="h-screen w-full flex items-center justify-center bg-[#121218]">
-            <div className="w-[75%]">
-                <GlowingEffectFeatures />
-            </div>
-        </div>
-
         <div className="h-screen w-full flex items-center justify-center bg-[#121218] px-8">
             <div className="flex items-center justify-between w-full max-w-6xl gap-16">
                 {/* Profile Card - Left Side */}
@@ -273,7 +201,7 @@ export function LandingPage() {
 
                 {/* Developer Details - Right Side */}
                 <div className="flex-1 max-w-2xl space-y-8">
-                    {/* Quote Section */}
+                    {/* Quote */}
                     <div className="relative">
                         <div className="absolute -left-4 top-0 h-full w-1 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></div>
                         <blockquote className="text-2xl font-light text-neutral-300 leading-relaxed pl-8">
@@ -326,8 +254,147 @@ export function LandingPage() {
                 </div>
             </div>
         </div>
+    );
+}
 
-        {/* Footer */}
-        <LandingFooter />
-    </>
+// Loading Component
+function LoadingSpinner() {
+    return (
+        <div className="flex items-center justify-center h-screen bg-[#121218]">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-neutral-400">Loading...</p>
+            </div>
+        </div>
+    );
+}
+
+interface GridItemProps {
+    area: string;
+    icon: React.ReactNode;
+    title: string;
+    description: React.ReactNode;
+}
+
+const GridItem = React.memo(({ area, icon, title, description }: GridItemProps) => {
+    return (
+        <li className={`min-h-[14rem] list-none ${area}`}>
+            <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
+                <GlowingEffect
+                    spread={40}
+                    glow={true}
+                    disabled={false}
+                    proximity={64}
+                    inactiveZone={0.01}
+                />
+                <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+                    <div className="relative flex flex-1 flex-col justify-between gap-3">
+                        <div className="w-fit rounded-lg border border-gray-600 p-2">
+                            {icon}
+                        </div>
+                        <div className="space-y-3">
+                            <h3 className="-tracking-4 pt-0.5 font-sans text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+                                {title}
+                            </h3>
+                            <h2 className="font-sans text-sm/[1.125rem] text-black md:text-base/[1.375rem] dark:text-neutral-400 [&_b]:md:font-semibold [&_strong]:md:font-semibold">
+                                {description}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </li>
+    );
+});
+
+
+export function LandingPage() {
+    const [showFeatures, setShowFeatures] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
+    const [showFooter, setShowFooter] = useState(false);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowFeatures(true);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    React.useEffect(() => {
+        if (showFeatures) {
+            const timer = setTimeout(() => {
+                setShowProfile(true);
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [showFeatures]);
+
+    React.useEffect(() => {
+        if (showProfile) {
+            const timer = setTimeout(() => {
+                setShowFooter(true);
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [showProfile]);
+
+    return (
+        <>
+            <NavbarResizable />
+            
+            {/* Hero Section - Loads immediately */}
+            <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#121218]">
+                <BackgroundRippleEffect />
+
+                <div className="w-full px-4 text-center">
+                    <h2 className="relative z-10 mx-auto max-w-4xl text-center text-xl font-bold mb-8 text-neutral-800 md:text-3xl lg:text-6xl dark:text-neutral-100">
+                        Your Complete Lighter.xyz Hub
+                    </h2>
+
+                    {/* Animated text */}
+                    <TrueFocus
+                        sentence="Dashboard, Explorer & Insights."
+                        manualMode={false}
+                        blurAmount={4}
+                        borderColor="#17A970"
+                        animationDuration={0.7}
+                        pauseBetweenAnimations={0.5}
+                    />
+
+                    <p className="relative z-10 mx-auto mt-6 max-w-xl text-center text-neutral-700 dark:text-neutral-400">
+                        Track, analyze, and explore everything about Lighter.xyz in one place.
+                    </p>
+
+                    {/* Input Box */}
+                    <div className="mt-14 flex justify-center">
+                        <div className="w-full max-w-lg">
+                            <PlaceholdersAndVanishInputBox />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {showFeatures && (
+                <Suspense fallback={<LoadingSpinner />}>
+                    <div className="h-screen w-full flex items-center justify-center bg-[#121218]">
+                        <div className="w-[75%]">
+                            <LazyGlowingEffectFeatures />
+                        </div>
+                    </div>
+                </Suspense>
+            )}
+
+            {showProfile && (
+                <Suspense fallback={<LoadingSpinner />}>
+                    <LazyProfileSection />
+                </Suspense>
+            )}
+
+            {showFooter && (
+                <Suspense fallback={<div className="h-32 bg-[#121218]"></div>}>
+                    <LazyLandingFooter />
+                </Suspense>
+            )}
+        </>
+    );
 }
