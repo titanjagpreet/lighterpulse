@@ -47,27 +47,34 @@ export const LandingFooter = () => {
                                     <h4 className="text-lg font-semibold text-white">Quick Access</h4>
                                     <ul className="space-y-3">
                                         <li>
-                                            <a href="#" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <a href="/dashboard" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-blue-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Dashboard
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="#" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <a href="/explorer" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-purple-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Transaction Explorer
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="#" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <a href="/exchange-stats" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-green-500 rounded-full group-hover:scale-150 transition-transform"></div>
-                                                Analytics
+                                                Exchange Stats
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="#" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <a href="/funding-comparison" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-orange-500 rounded-full group-hover:scale-150 transition-transform"></div>
-                                                Account Monitor
+                                                Funding Comparison
+                                            </a>
+                                        </li>
+
+                                        <li>
+                                            <a href="/announcements" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                                <div className="w-1 h-1 bg-orange-500 rounded-full group-hover:scale-150 transition-transform"></div>
+                                                Announcements
                                             </a>
                                         </li>
                                     </ul>
@@ -90,7 +97,7 @@ export const LandingFooter = () => {
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="#" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <a href="https://apibetadocs.lighter.xyz/docs/private-beta" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-yellow-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 API Reference
                                             </a>
