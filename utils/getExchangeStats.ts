@@ -5,8 +5,7 @@ export async function getExchangeStats(): Promise<ExchangeStatsResponse | null> 
         const res = await fetch("https://mainnet.zklighter.elliot.ai/api/v1/exchangeStats", {
             method: "GET",
             headers: { Accept: "application/json" },
-            cache: "force-cache",
-            next: { revalidate: 30 } // Cache for 30 seconds
+            cache: "no-store",
         });
 
         if (!res.ok) return null;
@@ -20,7 +19,7 @@ export async function getExchangeStats(): Promise<ExchangeStatsResponse | null> 
             dailyTradesCount: item.daily_trades_count,
             dailyBaseTokenVolume: item.daily_base_token_volume,
             dailyQuoteTokenVolume: item.daily_quote_token_volume,
-            dailyPriceChange: item.daily_price_change // already % value
+            dailyPriceChange: item.daily_price_change
         }));
 
         return {

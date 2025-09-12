@@ -29,8 +29,7 @@ export async function getAccountData(address: string): Promise<AccountData | nul
             `https://mainnet.zklighter.elliot.ai/api/v1/account?by=l1_address&value=${address}`,
             {
                 headers: { accept: "application/json" },
-                cache: "force-cache",
-                next: { revalidate: 30 }, // Cache for 30 seconds
+                cache: "no-store",
             }
         );
 
