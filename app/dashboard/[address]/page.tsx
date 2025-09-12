@@ -1,7 +1,9 @@
 "use client";
 import { DashboardParams, PageProps } from "@/types/routes";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { validateEthereumAddress } from "@/utils/validation";
 import {
     Search,
     Wallet,
@@ -9,77 +11,73 @@ import {
     Shield,
     Activity,
     BarChart3,
-    Settings,
     Home,
     DollarSign,
     ArrowUpRight,
     ArrowDownRight,
     Eye,
     Copy,
-    ExternalLink,
-    ChevronRight,
     Clock,
     Hash,
-    Users,
     Target,
     Zap,
     Menu,
     X,
     Megaphone,
-    TrendingDown
+    TrendingDown,
+    RefreshCw
 } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getAccountData, AccountData, KPIData, Position } from "@/utils/getBalancePositions";
 
-export default function DashboardPage({ params }: PageProps<DashboardParams>) {
-    const [activeTab, setActiveTab] = useState("overview");
+export default function DashboardPage({ params }: { params: Promise<DashboardParams> }) {
+    const resolvedParams = use(params) as DashboardParams;
+    const [activeTab, setActiveTab] = useState("positions");
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [addressInput, setAddressInput] = useState(params.address);
+    const [addressInput, setAddressInput] = useState(resolvedParams.address);
     const [accountData, setAccountData] = useState<AccountData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [initialLoad, setInitialLoad] = useState(true);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const router = useRouter();
 
-    const sidebarItems = [
+    const sidebarItems = useMemo(() => [
         { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
-        { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${params.address}` },
-        { id: "announcements", label: "Announcements", icon: Megaphone, type: "link", href: `/announcements?from=${params.address}` },
-        { id: "exchange-stats", label: "Exchange Stats", icon: TrendingDown, type: "link", href: `/exchange-stats?from=${params.address}` },
+        { id: "explorer", label: "Explorer", icon: Hash, type: "link", href: "/explorer" },
+        { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${resolvedParams.address}` },
+        { id: "announcements", label: "Announcements", icon: Megaphone, type: "link", href: `/announcements?from=${resolvedParams.address}` },
+        { id: "exchange-stats", label: "Exchange Stats", icon: TrendingDown, type: "link", href: `/exchange-stats?from=${resolvedParams.address}` },
         { id: "analytics", label: "Analytics", icon: BarChart3, type: "button" },
-    ];
+    ], [resolvedParams.address]);
 
-    // Fetch account data with optimized loading
-    useEffect(() => {
-        const fetchData = async () => {
+    // Fetch account data
+    const fetchData = useCallback(async () => {
             try {
                 setLoading(true);
                 setError(null);
-                
-                // Use Promise.race to timeout after 10 seconds
-                const timeoutPromise = new Promise<null>((_, reject) => 
-                    setTimeout(() => reject(new Error('Request timeout')), 10000)
-                );
-                
-                const dataPromise = getAccountData(params.address);
-                const data = await Promise.race([dataPromise, timeoutPromise]);
-                
+            
+                const data = await getAccountData(resolvedParams.address);
                 setAccountData(data);
+            setLastUpdated(new Date());
             } catch (err) {
                 setError("Failed to fetch account data");
                 console.error("Error fetching account data:", err);
             } finally {
                 setLoading(false);
-                setInitialLoad(false);
+            setInitialLoad(false);
             }
-        };
+    }, [resolvedParams.address]);
 
+    useEffect(() => {
         fetchData();
-    }, [params.address]);
+    }, [fetchData]);
 
     // Format KPI data
-    const formatKPIs = (kpis: KPIData) => [
+    const formatKPIs = useCallback((kpis: KPIData) => [
         {
             title: "Total Balance",
             value: `$${kpis.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -112,10 +110,10 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
             icon: TrendingUp,
             color: "from-orange-500 to-red-500"
         }
-    ];
+    ], []);
 
     // Format positions data
-    const formatPositions = (positions: Position[]) =>
+    const formatPositions = useCallback((positions: Position[]) =>
         positions.map(pos => ({
             pair: pos.symbol,
             type: pos.direction,
@@ -126,10 +124,35 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
             margin: `$${pos.margin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             pnl: `${pos.pnl >= 0 ? '+' : ''}$${pos.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             pnlPercent: `${pos.returnPct >= 0 ? '+' : ''}${pos.returnPct.toFixed(2)}%`
-        }));
+        })), []);
 
-    const kpis = accountData ? formatKPIs(accountData.kpis) : [];
-    const positions = accountData ? formatPositions(accountData.positions) : [];
+    const kpis = useMemo(() => accountData ? formatKPIs(accountData.kpis) : [], [accountData, formatKPIs]);
+    const positions = useMemo(() => accountData ? formatPositions(accountData.positions) : [], [accountData, formatPositions]);
+
+    // Copy address to clipboard
+    const copyAddress = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(resolvedParams.address);
+            // You could add a toast notification here
+        } catch (err) {
+            console.error('Failed to copy address:', err);
+        }
+    }, [resolvedParams.address]);
+
+    // Handle search input
+    const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        setSearchError(null);
+        
+        const trimmedAddress = addressInput.trim();
+        
+        if (validateEthereumAddress(trimmedAddress)) {
+            // Navigate to the new address dashboard
+            router.push(`/dashboard/${trimmedAddress}`);
+        } else {
+            setSearchError('Please enter a valid Ethereum address');
+        }
+    }, [addressInput, router]);
 
     // Show skeleton loading instead of full page loading
     if (initialLoad && loading) {
@@ -214,26 +237,40 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
 
                     {/* Center Search */}
                     <div className="flex-1 max-w-md mx-4 sm:mx-8 hidden sm:block">
-                        <div className="relative">
+                        <form onSubmit={handleSearchSubmit} className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
                             <input
                                 type="text"
-                                placeholder="Enter address, transaction hash, or block number"
+                                placeholder="Enter Ethereum address"
                                 value={addressInput}
-                                onChange={(e) => setAddressInput(e.target.value)}
+                                onChange={(e) => {
+                                    setAddressInput(e.target.value);
+                                    setSearchError(null);
+                                }}
                                 className="w-full bg-neutral-900 border border-neutral-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
-                        </div>
+                            {searchError && (
+                                <p className="absolute top-full left-0 mt-1 text-red-400 text-xs">{searchError}</p>
+                            )}
+                        </form>
                     </div>
 
                     {/* Right Navigation */}
                     <div className="flex items-center space-x-2 sm:space-x-4">
-                        <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+
+                        <Link 
+                            href="/explorer"
+                            className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors"
+                        >
                             Explorer
-                        </button>
-                        <button className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">
-                            Donate
-                        </button>
+                        </Link>
+
+                        <Link 
+                            href="/support"
+                            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                        >
+                            Support
+                        </Link>
                     </div>
                 </div>
             </nav>
@@ -295,15 +332,29 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-4 sm:space-y-0">
                                 <div>
                                     <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Dashboard</h1>
-                                    <p className="text-neutral-400 text-sm sm:text-base">Address: {params.address}</p>
+                                    <p className="text-neutral-400 text-sm sm:text-base">
+                                        Address: {resolvedParams.address}
+                                        {lastUpdated && (
+                                            <span className="ml-2 text-xs text-neutral-500">
+                                                • Last updated: {lastUpdated.toLocaleTimeString()}
+                                            </span>
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="flex items-center space-x-2 sm:space-x-3">
-                                    <button className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-neutral-800 text-neutral-300 rounded-lg hover:bg-neutral-700 transition-colors text-xs sm:text-sm">
-                                        <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
-                                        <span className="hidden sm:inline">View on Explorer</span>
-                                        <span className="sm:hidden">Explorer</span>
+                                    <button 
+                                        onClick={fetchData}
+                                        disabled={loading}
+                                        className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4", loading && "animate-spin")} />
+                                        <span className="hidden sm:inline">Refresh</span>
+                                        <span className="sm:hidden">Refresh</span>
                                     </button>
-                                    <button className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-neutral-800 text-neutral-300 rounded-lg hover:bg-neutral-700 transition-colors text-xs sm:text-sm">
+                                    <button 
+                                        onClick={copyAddress}
+                                        className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-neutral-800 text-neutral-300 rounded-lg hover:bg-neutral-700 transition-colors text-xs sm:text-sm"
+                                    >
                                         <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                                         <span className="hidden sm:inline">Copy Address</span>
                                         <span className="sm:hidden">Copy</span>
@@ -354,7 +405,7 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                         {/* Tabs */}
                         <div className="mb-6">
                             <div className="flex space-x-1 bg-neutral-900 p-1 rounded-lg w-fit">
-                                {["overview", "positions", "analytics"].map((tab) => (
+                                {["positions", "overview", "analytics"].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
@@ -388,22 +439,24 @@ export default function DashboardPage({ params }: PageProps<DashboardParams>) {
                                             <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
                                                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <button className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
+                                                    <a 
+                                                        href="https://app.lighter.xyz/trade/ETH?referral=5BHSFETV46UG"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors"
+                                                    >
                                                         <DollarSign className="w-6 h-6 text-blue-400 mb-2" />
                                                         <span className="text-sm text-white">Deposit</span>
-                                                    </button>
-                                                    <button className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
-                                                        <Wallet className="w-6 h-6 text-green-400 mb-2" />
-                                                        <span className="text-sm text-white">Withdraw</span>
-                                                    </button>
-                                                    <button className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
+                                                    </a>
+                                                    <a 
+                                                        href="https://app.lighter.xyz/trade/ETH?referral=5BHSFETV46UG"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors"
+                                                    >
                                                         <Activity className="w-6 h-6 text-purple-400 mb-2" />
                                                         <span className="text-sm text-white">Trade</span>
-                                                    </button>
-                                                    <button className="flex flex-col items-center p-4 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors">
-                                                        <Shield className="w-6 h-6 text-orange-400 mb-2" />
-                                                        <span className="text-sm text-white">Collateral</span>
-                                                    </button>
+                                                    </a>
                                                 </div>
                                             </div>
                                         </div>
