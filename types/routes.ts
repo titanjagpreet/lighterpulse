@@ -15,6 +15,6 @@ export interface BlockParams {
 }
 
 export interface PageProps<T = {}> {
-  params: T;
+  params: Promise<T>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }
