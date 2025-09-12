@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Search, Menu, X, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Search, Menu, X, ArrowLeft, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getExchangeStats } from "@/utils/getExchangeStats";
@@ -16,21 +16,21 @@ export default function ExchangeStatsPage() {
     const [userAddress, setUserAddress] = useState<string>("");
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-    useEffect(() => {
-        const getAddressFromUrl = () => {
-            if (typeof window !== 'undefined') {
-                const urlParams = new URLSearchParams(window.location.search);
-                const fromAddress = urlParams.get('from');
-                if (fromAddress) {
-                    setUserAddress(fromAddress);
-                }
+    const getAddressFromUrl = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromAddress = urlParams.get('from');
+            if (fromAddress) {
+                setUserAddress(fromAddress);
             }
-        };
-
-        getAddressFromUrl();
+        }
     }, []);
 
-    const fetchData = async (isInitialLoad = false) => {
+    useEffect(() => {
+        getAddressFromUrl();
+    }, [getAddressFromUrl]);
+
+    const fetchData = useCallback(async (isInitialLoad = false) => {
         try {
             if (isInitialLoad) {
                 setLoading(true);
@@ -51,31 +51,26 @@ export default function ExchangeStatsPage() {
                 setLoading(false);
             }
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchData(true);
-        
-        const interval = setInterval(() => {
-            fetchData(false);
-        }, 30000);
+    }, [fetchData]);
 
-        return () => clearInterval(interval);
-    }, []);
+    const filteredData = useMemo(() => 
+        exchangeData.filter(item =>
+            item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+        ), [exchangeData, searchTerm]);
 
-    const filteredData = exchangeData.filter(item =>
-        item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const formatPrice = (price: number): string => {
+    const formatPrice = useCallback((price: number): string => {
         if (price >= 1) {
             return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else {
             return `$${price.toFixed(6)}`;
         }
-    };
+    }, []);
 
-    const formatVolume = (volume: number): string => {
+    const formatVolume = useCallback((volume: number): string => {
         if (volume >= 1000000) {
             return `$${(volume / 1000000).toFixed(2)}M`;
         } else if (volume >= 1000) {
@@ -83,28 +78,28 @@ export default function ExchangeStatsPage() {
         } else {
             return `$${volume.toFixed(2)}`;
         }
-    };
+    }, []);
 
-    const formatPercentage = (value: number): string => {
+    const formatPercentage = useCallback((value: number): string => {
         const sign = value >= 0 ? "+" : "";
         return `${sign}${value.toFixed(2)}%`;
-    };
+    }, []);
 
-    const getPriceChangeColor = (value: number): string => {
+    const getPriceChangeColor = useCallback((value: number): string => {
         return value >= 0 ? "text-[#1FA67D]" : "text-[#EC6F87]";
-    };
+    }, []);
 
-    const getPriceChangeIcon = (value: number) => {
+    const getPriceChangeIcon = useCallback((value: number) => {
         return value >= 0 ? TrendingUp : TrendingDown;
-    };
+    }, []);
 
-    const formatLastUpdated = (date: Date): string => {
+    const formatLastUpdated = useCallback((date: Date): string => {
         return date.toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit',
             second: '2-digit'
         });
-    };
+    }, []);
 
     if (loading) {
         return (
@@ -238,9 +233,12 @@ export default function ExchangeStatsPage() {
                         <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
                             Explorer
                         </button>
-                        <button className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">
-                            Donate
-                        </button>
+                        <Link 
+                            href="/support"
+                            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                        >
+                            Support
+                        </Link>
                     </div>
                 </div>
             </nav>
@@ -253,12 +251,23 @@ export default function ExchangeStatsPage() {
                                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Exchange Stats</h1>
                                 <p className="text-neutral-400 text-xs sm:text-sm md:text-base">
                                     Real-time trading statistics for all pairs on Lighter Exchange
-                                    {!loading && (
+                                    {lastUpdated && (
                                         <span className="block sm:inline sm:ml-2 text-xs text-neutral-500 mt-1 sm:mt-0">
                                             • Last updated: {formatLastUpdated(lastUpdated)}
                                         </span>
                                     )}
                                 </p>
+                            </div>
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                                <button 
+                                    onClick={() => fetchData(false)}
+                                    disabled={loading}
+                                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4", loading && "animate-spin")} />
+                                    <span className="hidden sm:inline">Refresh</span>
+                                    <span className="sm:hidden">Refresh</span>
+                                </button>
                             </div>
                         </div>
                     </div>

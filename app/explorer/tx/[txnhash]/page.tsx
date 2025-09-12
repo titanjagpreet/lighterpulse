@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
     ArrowLeft, 
@@ -29,30 +29,30 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
     const router = useRouter();
 
     // Fetch transaction details
-    useEffect(() => {
-        const fetchTxDetails = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getTransactionDetails(params.txnhash);
-                if (data) {
-                    setTxDetails(data);
-                } else {
-                    setError("Transaction not found");
-                }
-            } catch (err) {
-                setError("Failed to fetch transaction details");
-                console.error("Error fetching transaction details:", err);
-            } finally {
-                setLoading(false);
+    const fetchTxDetails = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getTransactionDetails(params.txnhash);
+            if (data) {
+                setTxDetails(data);
+            } else {
+                setError("Transaction not found");
             }
-        };
-
-        fetchTxDetails();
+        } catch (err) {
+            setError("Failed to fetch transaction details");
+            console.error("Error fetching transaction details:", err);
+        } finally {
+            setLoading(false);
+        }
     }, [params.txnhash]);
 
+    useEffect(() => {
+        fetchTxDetails();
+    }, [fetchTxDetails]);
+
     // Copy to clipboard function
-    const copyToClipboard = async (text: string, type: string) => {
+    const copyToClipboard = useCallback(async (text: string, type: string) => {
         try {
             await navigator.clipboard.writeText(text);
             setCopied(type);
@@ -60,25 +60,25 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         } catch (err) {
             console.error("Failed to copy:", err);
         }
-    };
+    }, []);
 
     // Format transaction hash for display
-    const formatHash = (hash: string) => {
+    const formatHash = useCallback((hash: string) => {
         return `${hash.slice(0, 8)}...${hash.slice(-8)}`;
-    };
+    }, []);
 
     // Format timestamp for display
-    const formatTimestamp = (timestamp: string) => {
+    const formatTimestamp = useCallback((timestamp: string) => {
         const date = new Date(timestamp);
         return {
             date: date.toLocaleDateString(),
             time: date.toLocaleTimeString(),
             relative: getRelativeTime(date)
         };
-    };
+    }, []);
 
     // Get relative time
-    const getRelativeTime = (date: Date) => {
+    const getRelativeTime = useCallback((date: Date) => {
         const now = new Date();
         const diff = now.getTime() - date.getTime();
         const minutes = Math.floor(diff / 60000);
@@ -89,10 +89,10 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
         return `${days}d ago`;
-    };
+    }, []);
 
     // Get transaction type name
-    const getTransactionType = (type: number) => {
+    const getTransactionType = useCallback((type: number) => {
         const types = {
             0: "Transfer",
             1: "Deposit",
@@ -101,17 +101,17 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
             4: "Liquidation"
         };
         return types[type as keyof typeof types] || `Type ${type}`;
-    };
+    }, []);
 
     // Get status badge
-    const getStatusBadge = (status: number) => {
+    const getStatusBadge = useCallback((status: number) => {
         const statuses = {
             0: { text: "Pending", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
             1: { text: "Success", color: "bg-green-500/20 text-green-400 border-green-500/30" },
             2: { text: "Failed", color: "bg-red-500/20 text-red-400 border-red-500/30" }
         };
         return statuses[status as keyof typeof statuses] || { text: "Unknown", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" };
-    };
+    }, []);
 
     if (loading) {
         return (
@@ -123,6 +123,21 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
             </div>
         );
     }
+
+    const { queuedTime, executedTime, expiredTime, statusBadge } = useMemo(() => {
+        if (!txDetails) return { 
+            queuedTime: { date: '', time: '', relative: '' }, 
+            executedTime: { date: '', time: '', relative: '' }, 
+            expiredTime: { date: '', time: '', relative: '' }, 
+            statusBadge: { text: 'Unknown', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' }
+        };
+        return {
+            queuedTime: formatTimestamp(txDetails.queuedAt),
+            executedTime: formatTimestamp(txDetails.executedAt),
+            expiredTime: formatTimestamp(txDetails.expiredAt),
+            statusBadge: getStatusBadge(txDetails.status)
+        };
+    }, [txDetails, formatTimestamp, getStatusBadge]);
 
     if (error || !txDetails) {
         return (
@@ -146,6 +161,12 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
                                 <ArrowLeft className="w-4 h-4" />
                                 <span>Back to Explorer</span>
                             </Link>
+                            <Link 
+                                href="/support"
+                                className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                            >
+                                Support
+                            </Link>
                         </div>
                     </div>
                 </nav>
@@ -168,11 +189,6 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
         );
     }
 
-    const queuedTime = formatTimestamp(txDetails.queuedAt);
-    const executedTime = formatTimestamp(txDetails.executedAt);
-    const expiredTime = formatTimestamp(txDetails.expiredAt);
-    const statusBadge = getStatusBadge(txDetails.status);
-
     return (
         <div className="min-h-screen bg-[#121218] text-white">
             {/* Navbar */}
@@ -193,6 +209,12 @@ export default function TransactionPage({ params }: { params: { txnhash: string 
                         >
                             <ArrowLeft className="w-4 h-4" />
                             <span>Back to Explorer</span>
+                        </Link>
+                        <Link 
+                            href="/support"
+                            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                        >
+                            Support
                         </Link>
                     </div>
                 </div>

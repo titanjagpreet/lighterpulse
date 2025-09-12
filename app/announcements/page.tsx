@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, ArrowLeft, Calendar, Clock } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -14,56 +14,59 @@ export default function AnnouncementsPage() {
     const [userAddress, setUserAddress] = useState<string>("");
 
     // Get user address from URL query parameter
-    useEffect(() => {
-        const getAddressFromUrl = () => {
-            if (typeof window !== 'undefined') {
-                const urlParams = new URLSearchParams(window.location.search);
-                const fromAddress = urlParams.get('from');
-                if (fromAddress) {
-                    setUserAddress(fromAddress);
-                }
+    const getAddressFromUrl = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromAddress = urlParams.get('from');
+            if (fromAddress) {
+                setUserAddress(fromAddress);
             }
-        };
-
-        getAddressFromUrl();
+        }
     }, []);
+
+    useEffect(() => {
+        getAddressFromUrl();
+    }, [getAddressFromUrl]);
 
     // Fetch announcements data
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getAnnouncements();
-                if (data && Array.isArray(data)) {
-                    setAnnouncements(data);
-                } else {
-                    setError("Failed to fetch announcements");
-                }
-            } catch (err) {
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getAnnouncements();
+            if (data && Array.isArray(data)) {
+                setAnnouncements(data);
+            } else {
                 setError("Failed to fetch announcements");
-                console.error("Error fetching announcements:", err);
-            } finally {
-                setLoading(false);
             }
-        };
-
-        fetchData();
+        } catch (err) {
+            setError("Failed to fetch announcements");
+            console.error("Error fetching announcements:", err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    // Filter announcements based on search
-    const filteredAnnouncements = announcements.filter(announcement =>
-        announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-    // Sort announcements by timestamp (newest first)
-    const sortedAnnouncements = [...filteredAnnouncements].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    // Filter and sort announcements
+    const { filteredAnnouncements, sortedAnnouncements } = useMemo(() => {
+        const filtered = announcements.filter(announcement =>
+            announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        const sorted = [...filtered].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        return { filteredAnnouncements: filtered, sortedAnnouncements: sorted };
+    }, [announcements, searchTerm]);
 
     // Format timestamp for display
-    const formatTimestamp = (created_at: string) => {
+    const formatTimestamp = useCallback((created_at: string) => {
         const date = new Date(created_at);
         const now = new Date();
         const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
@@ -77,7 +80,7 @@ export default function AnnouncementsPage() {
             day: 'numeric',
             year: 'numeric'
         });
-    };
+    }, []);
 
     if (loading) {
         return (
@@ -128,9 +131,12 @@ export default function AnnouncementsPage() {
                         <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
                             Explorer
                         </button>
-                        <button className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">
-                            Donate
-                        </button>
+                        <Link 
+                            href="/support"
+                            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                        >
+                            Support
+                        </Link>
                     </div>
                 </div>
             </nav>

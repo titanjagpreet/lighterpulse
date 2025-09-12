@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, ChevronDown, Info, Menu, X, ArrowLeft } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -33,43 +33,43 @@ export default function FundingComparisonPage() {
     const [userAddress, setUserAddress] = useState<string>("");
 
     // Get user address from URL query parameter
-    useEffect(() => {
-        const getAddressFromUrl = () => {
-            if (typeof window !== 'undefined') {
-                const urlParams = new URLSearchParams(window.location.search);
-                const fromAddress = urlParams.get('from');
-                if (fromAddress) {
-                    setUserAddress(fromAddress);
-                }
+    const getAddressFromUrl = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromAddress = urlParams.get('from');
+            if (fromAddress) {
+                setUserAddress(fromAddress);
             }
-        };
-
-        getAddressFromUrl();
+        }
     }, []);
+
+    useEffect(() => {
+        getAddressFromUrl();
+    }, [getAddressFromUrl]);
 
     // Fetch funding data
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getFundingData();
-                setFundingData(data);
-            } catch (err) {
-                setError("Failed to fetch funding data");
-                console.error("Error fetching funding data:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getFundingData();
+            setFundingData(data);
+        } catch (err) {
+            setError("Failed to fetch funding data");
+            console.error("Error fetching funding data:", err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
 
 
     // Get rate based on timeframe
-    const getRateByTimeframe = (item: any, timeframe: Timeframe): number => {
+    const getRateByTimeframe = useCallback((item: any, timeframe: Timeframe): number => {
         switch (timeframe) {
             case "1h": return item.rate_1h;
             case "8h": return item.rate_8h;
@@ -78,10 +78,10 @@ export default function FundingComparisonPage() {
             case "1y": return item.rate_1y;
             default: return item.rate_8h;
         }
-    };
+    }, []);
 
     // Get arbitrage difference based on timeframe
-    const getArbByTimeframe = (arbItem: any, timeframe: Timeframe): number => {
+    const getArbByTimeframe = useCallback((arbItem: any, timeframe: Timeframe): number => {
         if (!arbItem || !arbItem.diffs) return 0;
         switch (timeframe) {
             case "1h": return arbItem.diffs["1h"];
@@ -91,10 +91,10 @@ export default function FundingComparisonPage() {
             case "1y": return arbItem.diffs["1y"];
             default: return arbItem.diffs["8h"];
         }
-    };
+    }, []);
 
     // Get arbitrage suggestion based on timeframe
-    const getArbSuggestion = (arbItem: any, timeframe: Timeframe): string => {
+    const getArbSuggestion = useCallback((arbItem: any, timeframe: Timeframe): string => {
         if (!arbItem || !arbItem.suggestions) return "No suggestion available";
         switch (timeframe) {
             case "1h": return arbItem.suggestions["1h"];
@@ -104,10 +104,10 @@ export default function FundingComparisonPage() {
             case "1y": return arbItem.suggestions["1y"];
             default: return arbItem.suggestions["8h"];
         }
-    };
+    }, []);
 
     // Format table data
-    const formatTableData = (): FundingTableData[] => {
+    const formatTableData = useCallback((): FundingTableData[] => {
         if (!fundingData) return [];
 
         return fundingData.symbols.map((symbol: string) => {
@@ -133,25 +133,29 @@ export default function FundingComparisonPage() {
                 lighter_hl_suggestion: lighter_hl_arb ? getArbSuggestion(lighter_hl_arb, timeframe) : "No suggestion available",
             };
         });
-    };
+    }, [fundingData, timeframe, getRateByTimeframe, getArbByTimeframe, getArbSuggestion]);
 
-    // Filter data based on search
-    const filteredData = formatTableData().filter(item =>
-        item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Sort by market_id (maintain the order from API)
-    const sortedData = [...filteredData].sort((a, b) => {
-        // Find the market_id for each symbol from the lighter data
-        const aItem = fundingData.lighter.find((item: any) => item.symbol === a.symbol);
-        const bItem = fundingData.lighter.find((item: any) => item.symbol === b.symbol);
+    // Filter and sort data
+    const { filteredData, sortedData } = useMemo(() => {
+        const formatted = formatTableData();
+        const filtered = formatted.filter(item =>
+            item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+        );
         
-        if (!aItem || !bItem) return 0;
-        return aItem.market_id - bItem.market_id;
-    });
+        const sorted = [...filtered].sort((a, b) => {
+            if (!fundingData) return 0;
+            const aItem = fundingData.lighter.find((item: any) => item.symbol === a.symbol);
+            const bItem = fundingData.lighter.find((item: any) => item.symbol === b.symbol);
+            
+            if (!aItem || !bItem) return 0;
+            return aItem.market_id - bItem.market_id;
+        });
+        
+        return { filteredData: filtered, sortedData: sorted };
+    }, [formatTableData, searchTerm, fundingData]);
 
     // Format percentage
-    const formatPercentage = (value: number, showSign: boolean = false): string => {
+    const formatPercentage = useCallback((value: number, showSign: boolean = false): string => {
         if (value === 0) return "--";
         if (showSign) {
             const sign = value >= 0 ? "+" : "";
@@ -159,10 +163,10 @@ export default function FundingComparisonPage() {
         } else {
             return `${Math.abs(value * 100).toFixed(4)}%`;
         }
-    };
+    }, []);
 
     // Get color for value
-    const getValueColor = (value: number, isArb: boolean = false): string => {
+    const getValueColor = useCallback((value: number, isArb: boolean = false): string => {
         if (value === 0) return "text-neutral-400";
         
         if (isArb) {
@@ -170,7 +174,7 @@ export default function FundingComparisonPage() {
         } else {
             return value >= 0 ? "text-[#1FA67D]" : "text-[#EC6F87]";
         }
-    };
+    }, []);
 
     if (loading) {
         return (
@@ -228,9 +232,12 @@ export default function FundingComparisonPage() {
                         <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
                             Explorer
                         </button>
-                        <button className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">
-                            Donate
-                        </button>
+                        <Link 
+                            href="/support"
+                            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+                        >
+                            Support
+                        </Link>
                     </div>
                 </div>
             </nav>
