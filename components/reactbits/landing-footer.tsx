@@ -1,5 +1,6 @@
 "use client";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export const LandingFooter = () => {
     return (
@@ -47,35 +48,35 @@ export const LandingFooter = () => {
                                     <h4 className="text-lg font-semibold text-white">Quick Access</h4>
                                     <ul className="space-y-3">
                                         <li>
-                                            <a href="/dashboard" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <Link href="/dashboard" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-blue-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Dashboard
-                                            </a>
+                                            </Link>
                                         </li>
                                         <li>
-                                            <a href="/explorer" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <Link href="/explorer" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-purple-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Transaction Explorer
-                                            </a>
+                                            </Link>
                                         </li>
                                         <li>
-                                            <a href="/exchange-stats" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <Link href="/exchange-stats" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-green-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Exchange Stats
-                                            </a>
+                                            </Link>
                                         </li>
                                         <li>
-                                            <a href="/funding-comparison" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <Link href="/funding-comparison" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-orange-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Funding Comparison
-                                            </a>
+                                            </Link>
                                         </li>
 
                                         <li>
-                                            <a href="/announcements" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
+                                            <Link href="/announcements" className="text-neutral-400 hover:text-white transition-colors duration-200 flex items-center gap-2 group">
                                                 <div className="w-1 h-1 bg-orange-500 rounded-full group-hover:scale-150 transition-transform"></div>
                                                 Announcements
-                                            </a>
+                                            </Link>
                                         </li>
                                     </ul>
                                 </div>
