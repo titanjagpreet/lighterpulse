@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Hash, Blocks, Clock, Users, ExternalLink, Copy, Eye } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
@@ -8,13 +8,15 @@ import { getExplorerData } from "@/utils/getExplorerLandingData";
 import { ExplorerData, BlockTableItem, TxTableItem } from "@/types/explorerLanding";
 import Link from "next/link";
 
-export default function ExplorerPage() {
+function ExplorerContent() {
     const [explorerData, setExplorerData] = useState<ExplorerData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchError, setSearchError] = useState("");
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const userAddress = searchParams?.get('from') || "";
 
     // Fetch explorer data
     const fetchData = useCallback(async () => {
@@ -142,7 +144,7 @@ export default function ExplorerPage() {
                     {/* Right Navigation */}
                     <div className="flex items-center space-x-2 sm:space-x-4">
                         <Link 
-                            href="/dashboard/0x0000000000000000000000000000000000000000"
+                            href={userAddress ? `/dashboard/${userAddress}` : "/dashboard/0x0000000000000000000000000000000000000000"}
                             className="flex items-center space-x-1 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors"
                         >
                             <span>Dashboard</span>
@@ -358,5 +360,20 @@ export default function ExplorerPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ExplorerPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#121218] text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-400">Loading explorer data...</p>
+                </div>
+            </div>
+        }>
+            <ExplorerContent />
+        </Suspense>
     );
 }
