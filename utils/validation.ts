@@ -1,10 +1,12 @@
-/**
- * Validation utilities for blockchain-related inputs
- */
-
 export const VALIDATION_PATTERNS = {
+  // Ethereum address pattern (0x followed by 40 hex characters)
   ETH_ADDRESS: /^0x[a-fA-F0-9]{40}$/,
-  TXN_HASH: /^0x[a-fA-F0-9]{64}$/,
+  // Transaction hash patterns - various lengths and formats
+  // Standard 64-char hex: 51c76f39f739bd4239c1db44ffa77168fa0c11bdc334c6b4ee30d72593bc1a9589620a1530d35677
+  // Long hex: 5033133a5ee303604b751c07530f5d7e83c00e82c013e79d7ba09a23de34c5e477ecb236b3f843d7
+  // Zero-padded: 00000001f8178924000001993ceacc46000000000000000000000000000000000000000000000000
+  TXN_HASH: /^[0-9a-fA-F]{32,128}$/,
+  // Block number pattern (numeric only)
   BLOCK_NUMBER: /^[0-9]+$/,
 } as const;
 
@@ -23,9 +25,14 @@ export const validateBlockNumber = (blockNumber: string): boolean => {
 export const getInputType = (value: string): 'address' | 'transaction' | 'block' | 'invalid' => {
   const trimmedValue = value.trim();
   
+  // Check for Ethereum address first (most specific pattern)
   if (validateEthereumAddress(trimmedValue)) return 'address';
-  if (validateTransactionHash(trimmedValue)) return 'transaction';
+  
+  // Check for block number (numeric only)
   if (validateBlockNumber(trimmedValue)) return 'block';
+  
+  // Check for transaction hash (hex string of various lengths)
+  if (validateTransactionHash(trimmedValue)) return 'transaction';
   
   return 'invalid';
 };
@@ -38,7 +45,7 @@ export const getRouteForInput = (value: string): string | null => {
     case 'address':
       return `/dashboard/${trimmedValue}`;
     case 'transaction':
-      return `/explorer/${trimmedValue}`;
+      return `/explorer/tx/${trimmedValue}`;
     case 'block':
       return `/explorer/block/${trimmedValue}`;
     default:
