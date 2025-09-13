@@ -29,9 +29,17 @@ const LazyLandingFooter = lazy(() => Promise.resolve({ default: LandingFooter })
 function NavbarResizable() {
     const navItems = useMemo(() => [
         {
+            name: "Fundings",
+            link: "/funding-comparison",
+        },
+        {
             name: "𝕏",
             link: "https://x.com/singhxbt",
         },
+        {
+            name: "Exchange Stats",
+            link: "/exchange-stats",
+        }
     ], []);
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
