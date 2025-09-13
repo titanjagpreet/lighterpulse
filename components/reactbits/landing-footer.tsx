@@ -24,10 +24,12 @@ export const LandingFooter = () => {
                                 {/* Project Info */}
                                 <div className="space-y-4 sm:space-y-6">
                                     <div className="space-y-3 sm:space-y-4">
-                                        <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center">
-                                                <img src="https://lighter.xyz/_astro/logo.DJnDsPC3.svg" alt="" className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                                            </div>
+                                        <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
+                                            <img 
+                                                src="/logo.png" 
+                                                alt="LighterPulse Logo" 
+                                                className="w-12 h-12 sm:w-14 sm:h-14" 
+                                            />
                                             LighterPulse
                                         </h3>
                                         <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">

@@ -237,10 +237,9 @@ export const NavbarLogo = () => {
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
       <img
-        src="https://lighter.xyz/_astro/logo.DJnDsPC3.svg"
-        alt="logo"
-        width={20}
-        height={20}
+        src="/logo.png"
+        alt="LighterPulse Logo"
+        className="w-12 h-12 sm:w-12 sm:h-12"
       />
       <span className="text-xl text-black dark:text-white">LighterPulse</span>
     </a>

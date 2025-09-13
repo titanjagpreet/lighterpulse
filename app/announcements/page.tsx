@@ -99,9 +99,9 @@ function AnnouncementsContent() {
                     {/* Logo */}
                     <div className="flex items-center space-x-2 sm:space-x-3">
                         <img
-                            src="https://lighter.xyz/_astro/logo.DJnDsPC3.svg"
+                            src="/logo.png"
                             alt="LighterPulse"
-                            className="w-6 h-6 sm:w-8 sm:h-8"
+                            className="w-12 h-12 sm:w-12 sm:h-12"
                         />
                         <span className="text-lg sm:text-xl font-bold text-white">LighterPulse</span>
                     </div>
