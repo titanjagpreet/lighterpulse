@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LighterPulse - Real-time Analytics for Lighter.xyz",
   description: "Comprehensive analytics platform for Lighter.xyz featuring real-time trading stats, funding rate comparisons, exchange insights, transaction explorer, and portfolio tracking for perpetual DEX traders.",
+  icons: {
+    icon: "/favicon.ico",
+  },
   keywords: [
     "lighter.xyz",
     "lighterpulse", 
