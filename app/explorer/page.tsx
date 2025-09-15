@@ -138,7 +138,7 @@ function ExplorerContent() {
                             alt="LighterPulse"
                             className="w-12 h-12 sm:w-14 sm:h-14"
                         />
-                        <span className="text-lg sm:text-xl font-bold text-white">LighterPulse</span>
+                        <span className="text-lg hidden sm:block sm:text-xl font-bold text-white">LighterPulse</span>
                     </div>
 
                     {/* Right Navigation */}

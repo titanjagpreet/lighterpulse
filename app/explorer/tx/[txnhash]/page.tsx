@@ -201,7 +201,7 @@ export default function TransactionPage({ params }: { params: Promise<{ txnhash:
                             alt="LighterPulse"
                             className="w-6 h-6 sm:w-8 sm:h-8"
                         />
-                        <span className="text-lg sm:text-xl font-bold text-white">LighterPulse</span>
+                        <span className="text-lg hidden sm:block sm:text-xl font-bold text-white">LighterPulse</span>
                     </div>
                     <div className="flex items-center space-x-2 sm:space-x-4">
                         <Link 
