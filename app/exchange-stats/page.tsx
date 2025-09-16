@@ -389,7 +389,7 @@ function ExchangeStatsContent() {
                                                         </td>
                                                         <td className="py-3 px-4 text-right">
                                                             <span className="text-neutral-300 text-sm transition-all duration-300">
-                                                                {formatVolume(item.dailyBaseTokenVolume)}
+                                                                {item.dailyBaseTokenVolume}
                                                             </span>
                                                         </td>
                                                         <td className="py-3 px-4 text-right">
@@ -451,7 +451,7 @@ function ExchangeStatsContent() {
                                                         </td>
                                                         <td className="py-2 px-3 text-right">
                                                             <span className="text-neutral-300 text-xs transition-all duration-300">
-                                                                {formatVolume(item.dailyBaseTokenVolume)}
+                                                                {item.dailyBaseTokenVolume}
                                                             </span>
                                                         </td>
                                                         <td className="py-2 px-3 text-right">
@@ -517,7 +517,7 @@ function ExchangeStatsContent() {
                                                     <div>
                                                         <p className="text-neutral-400 text-xs mb-1">Base Volume</p>
                                                         <p className="text-neutral-300 transition-all duration-300">
-                                                            {formatVolume(item.dailyBaseTokenVolume)}
+                                                            {item.dailyBaseTokenVolume}
                                                         </p>
                                                     </div>
                                                     <div>
