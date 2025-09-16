@@ -9,12 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@duneanalytics/client-sdk": "^0.2.5",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tabler/icons-react": "^3.34.1",
+    "@types/dotenv": "^6.1.1",
+    "@upstash/redis": "^1.35.3",
     "@vercel/analytics": "^1.5.0",
+    "add": "^2.0.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.2",
     "lucide-react": "^0.540.0",
     "motion": "^12.23.12",
     "next": "15.5.0",
