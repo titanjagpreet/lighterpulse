@@ -1,15 +1,18 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Menu, X, ArrowLeft, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { Search, Menu, X, ArrowLeft, TrendingUp, TrendingDown, RefreshCw, DollarSign, Users, BarChart3, Activity, Wallet } from "lucide-react";
 import { GlowingEffect } from "@/components/aceternity/glow-cards";
 import { cn } from "@/lib/utils";
 import { getExchangeStats } from "@/utils/getExchangeStats";
 import { ExchangeStat } from "@/types/excahngeStats";
+import { getCachedMetrics } from "@/utils/getCachedMetrics";
+import { Metrics } from "@/utils/getOtherStats";
 import Link from "next/link";
 
 function ExchangeStatsContent() {
     const [exchangeData, setExchangeData] = useState<ExchangeStat[]>([]);
+    const [metricsData, setMetricsData] = useState<Metrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -24,13 +27,24 @@ function ExchangeStatsContent() {
                 setLoading(true);
             }
             setError(null);
-            const data = await getExchangeStats();
-            if (data) {
-                setExchangeData(data.stats);
-                setLastUpdated(new Date());
+            
+            // Get both datasets at the same time for better performance
+            const [exchangeStatsResult, metricsResult] = await Promise.all([
+                getExchangeStats(),
+                getCachedMetrics()
+            ]);
+            
+            if (exchangeStatsResult) {
+                setExchangeData(exchangeStatsResult.stats);
             } else {
                 setError("Failed to fetch exchange stats");
             }
+            
+            if (metricsResult) {
+                setMetricsData(metricsResult);
+            }
+            
+            setLastUpdated(new Date());
         } catch (err) {
             setError("Failed to fetch exchange stats");
             console.error("Error fetching exchange stats:", err);
@@ -68,7 +82,7 @@ function ExchangeStatsContent() {
         }
     }, []);
 
-    const formatPercentage = useCallback((value: number): string => {
+    const formatPriceChange = useCallback((value: number): string => {
         const sign = value >= 0 ? "+" : "";
         return `${sign}${value.toFixed(2)}%`;
     }, []);
@@ -87,6 +101,35 @@ function ExchangeStatsContent() {
             minute: '2-digit',
             second: '2-digit'
         });
+    }, []);
+
+    const formatTvl = useCallback((tvl: number | null): string => {
+        if (tvl === null) return "N/A";
+        if (tvl >= 1000000000) {
+            return `$${(tvl / 1000000000).toFixed(2)}B`;
+        } else if (tvl >= 1000000) {
+            return `$${(tvl / 1000000).toFixed(2)}M`;
+        } else if (tvl >= 1000) {
+            return `$${(tvl / 1000).toFixed(2)}K`;
+        } else {
+            return `$${tvl.toFixed(2)}`;
+        }
+    }, []);
+
+    const formatUsers = useCallback((users: number | null): string => {
+        if (users === null) return "N/A";
+        if (users >= 1000000) {
+            return `${(users / 1000000).toFixed(2)}M`;
+        } else if (users >= 1000) {
+            return `${(users / 1000).toFixed(2)}K`;
+        } else {
+            return users.toLocaleString();
+        }
+    }, []);
+
+    const formatMetricsPercentage = useCallback((value: number | null): string => {
+        if (value === null) return "N/A";
+        return `${value.toFixed(2)}%`;
     }, []);
 
     if (loading) {
@@ -112,9 +155,15 @@ function ExchangeStatsContent() {
                         <div className="w-80 sm:w-96 h-3 sm:h-4 bg-neutral-800 rounded animate-pulse"></div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6">
-                        {[1,2,3].map((i) => (
-                            <div key={i} className={`h-24 sm:h-28 lg:h-32 bg-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 animate-pulse ${i === 3 ? 'sm:col-span-2 lg:col-span-1' : ''}`}></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                        {[1,2,3,4].map((i) => (
+                            <div key={i} className="h-24 sm:h-28 lg:h-32 bg-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 animate-pulse"></div>
+                        ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                        {[5,6,7,8].map((i) => (
+                            <div key={i} className="h-24 sm:h-28 lg:h-32 bg-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 animate-pulse"></div>
                         ))}
                     </div>
 
@@ -127,7 +176,6 @@ function ExchangeStatsContent() {
                     <div className="relative group">
                         <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
                             <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 sm:gap-6 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-[#121218]">
-                                {/* Desktop skeleton */}
                                 <div className="hidden xl:block space-y-3">
                                     {[1,2,3,4,5,6,7,8].map((i) => (
                                         <div key={i} className="flex items-center justify-between p-3 bg-neutral-800 rounded-lg animate-pulse">
@@ -141,7 +189,6 @@ function ExchangeStatsContent() {
                                     ))}
                                 </div>
                                 
-                                {/* Tablet skeleton */}
                                 <div className="hidden lg:block xl:hidden space-y-2">
                                     {[1,2,3,4,5,6,7,8].map((i) => (
                                         <div key={i} className="flex items-center justify-between p-2 bg-neutral-800 rounded-lg animate-pulse">
@@ -155,7 +202,6 @@ function ExchangeStatsContent() {
                                     ))}
                                 </div>
                                 
-                                {/* Mobile skeleton */}
                                 <div className="lg:hidden space-y-3">
                                     {[1,2,3,4,5].map((i) => (
                                         <div key={i} className="bg-neutral-800/50 rounded-lg p-3 sm:p-4 animate-pulse">
@@ -262,7 +308,7 @@ function ExchangeStatsContent() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
                         <div className="relative group">
                             <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
                                 <GlowingEffect
@@ -307,7 +353,7 @@ function ExchangeStatsContent() {
                             </div>
                         </div>
 
-                        <div className="relative group sm:col-span-2 lg:col-span-1">
+                        <div className="relative group">
                             <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
                                 <GlowingEffect
                                     spread={40}
@@ -324,6 +370,123 @@ function ExchangeStatsContent() {
                                         <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Total Volume (24h)</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
                                             ${(exchangeData.reduce((sum, item) => sum + item.dailyQuoteTokenVolume, 0) / 1000000).toFixed(2)}M
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group">
+                            <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
+                                <GlowingEffect
+                                    spread={40}
+                                    glow={true}
+                                    disabled={false}
+                                    proximity={64}
+                                    inactiveZone={0.01}
+                                />
+                                <div className="border-0.75 relative flex h-full items-center gap-3 sm:gap-4 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
+                                    <div className="p-1.5 sm:p-2 md:p-3 rounded-lg bg-gradient-to-r from-orange-500 to-red-500">
+                                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Total TVL</p>
+                                        <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
+                                            {formatTvl(metricsData?.tvl ?? null)}M
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                        <div className="relative group">
+                            <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
+                                <GlowingEffect
+                                    spread={40}
+                                    glow={true}
+                                    disabled={false}
+                                    proximity={64}
+                                    inactiveZone={0.01}
+                                />
+                                <div className="border-0.75 relative flex h-full items-center gap-3 sm:gap-4 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
+                                    <div className="p-1.5 sm:p-2 md:p-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500">
+                                        <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Total Users</p>
+                                        <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
+                                            {formatUsers(metricsData?.users ?? null)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group">
+                            <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
+                                <GlowingEffect
+                                    spread={40}
+                                    glow={true}
+                                    disabled={false}
+                                    proximity={64}
+                                    inactiveZone={0.01}
+                                />
+                                <div className="border-0.75 relative flex h-full items-center gap-3 sm:gap-4 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
+                                    <div className="p-1.5 sm:p-2 md:p-3 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500">
+                                        <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">TVL Share of Top 1% Users</p>
+                                        <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
+                                            {formatMetricsPercentage(metricsData?.tvlShare ?? null)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group">
+                            <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
+                                <GlowingEffect
+                                    spread={40}
+                                    glow={true}
+                                    disabled={false}
+                                    proximity={64}
+                                    inactiveZone={0.01}
+                                />
+                                <div className="border-0.75 relative flex h-full items-center gap-3 sm:gap-4 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
+                                    <div className="p-1.5 sm:p-2 md:p-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-500">
+                                        <Activity className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">User Retention</p>
+                                        <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
+                                            {metricsData?.retention}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group">
+                            <div className="relative h-full rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 md:rounded-3xl md:p-3">
+                                <GlowingEffect
+                                    spread={40}
+                                    glow={true}
+                                    disabled={false}
+                                    proximity={64}
+                                    inactiveZone={0.01}
+                                />
+                                <div className="border-0.75 relative flex h-full items-center gap-3 sm:gap-4 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-neutral-900">
+                                    <div className="p-1.5 sm:p-2 md:p-3 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500">
+                                        <Wallet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Weekly TVL</p>
+                                        <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
+                                            {formatTvl(metricsData?.weeklyTvl ?? null)}M
                                         </p>
                                     </div>
                                 </div>
@@ -356,7 +519,6 @@ function ExchangeStatsContent() {
                                 inactiveZone={0.01}
                             />
                             <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 sm:gap-6 overflow-hidden rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] bg-[#121218]">
-                                {/* Desktop Table View */}
                                 <div className="hidden xl:block overflow-x-auto">
                                     <table className="w-full min-w-[1000px]">
                                         <thead>
@@ -407,7 +569,7 @@ function ExchangeStatsContent() {
                                                                     "text-sm font-medium transition-all duration-300",
                                                                     getPriceChangeColor(item.dailyPriceChange)
                                                                 )}>
-                                                                    {formatPercentage(item.dailyPriceChange)}
+                                                                    {formatPriceChange(item.dailyPriceChange)}
                                                                 </span>
                                                             </div>
                                                         </td>
@@ -418,7 +580,6 @@ function ExchangeStatsContent() {
                                     </table>
                                 </div>
 
-                                {/* Tablet Table View */}
                                 <div className="hidden lg:block xl:hidden overflow-x-auto">
                                     <table className="w-full min-w-[800px]">
                                         <thead>
@@ -469,7 +630,7 @@ function ExchangeStatsContent() {
                                                                     "text-xs font-medium transition-all duration-300",
                                                                     getPriceChangeColor(item.dailyPriceChange)
                                                                 )}>
-                                                                    {formatPercentage(item.dailyPriceChange)}
+                                                                    {formatPriceChange(item.dailyPriceChange)}
                                                                 </span>
                                                             </div>
                                                         </td>
@@ -480,7 +641,6 @@ function ExchangeStatsContent() {
                                     </table>
                                 </div>
 
-                                {/* Mobile Card View */}
                                 <div className="lg:hidden space-y-3">
                                     {filteredData.map((item, index) => {
                                         const PriceChangeIcon = getPriceChangeIcon(item.dailyPriceChange);
@@ -497,7 +657,7 @@ function ExchangeStatsContent() {
                                                             "text-sm font-medium transition-all duration-300",
                                                             getPriceChangeColor(item.dailyPriceChange)
                                                         )}>
-                                                            {formatPercentage(item.dailyPriceChange)}
+                                                            {formatPriceChange(item.dailyPriceChange)}
                                                         </span>
                                                     </div>
                                                 </div>
