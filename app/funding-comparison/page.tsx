@@ -218,9 +218,11 @@ function FundingComparisonContent() {
                             <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span>Dashboard</span>
                         </Link>
-                        <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
-                            Explorer
-                        </button>
+                        <Link 
+                           href="/explorer"
+                           className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                           Explorer
+                        </Link>
                         <Link 
                             href="/support"
                             className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
@@ -239,7 +241,7 @@ function FundingComparisonContent() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-4 sm:space-y-0">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Funding Comparison</h1>
-                            <p className="text-neutral-400 text-sm sm:text-base">Funding rate differences across exchanges</p>
+                            <p className="text-neutral-400 text-sm sm:text-base">Funding rate differences across exchanges. Hover over values of Arb column to see the Arbitrage suggestion. </p>
                         </div>
                     </div>
                 </div>

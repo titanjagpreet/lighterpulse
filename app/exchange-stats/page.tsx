@@ -218,9 +218,11 @@ function ExchangeStatsContent() {
                             <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span>Dashboard</span>
                         </Link>
-                        <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
-                            Explorer
-                        </button>
+                        <Link 
+                           href="/explorer"
+                           className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                           Explorer
+                        </Link>
                         <Link 
                             href="/support"
                             className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors"
