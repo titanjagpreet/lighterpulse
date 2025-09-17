@@ -1,7 +1,6 @@
 # LighterPulse
 
 <div align="center">
-  <img src="/logo.png" alt="LighterPulse Logo" width="120" height="120">
   
   **Your Complete Lighter.xyz Hub**
   
@@ -39,16 +38,26 @@ LighterPulse is a comprehensive analytics and exploration platform built specifi
 - **Portfolio Tracking**: Comprehensive dashboard for account monitoring
 - **Block Explorer**: Advanced transaction and block exploration
 - **Funding Analysis**: Cross-exchange funding rate comparisons
-- **Exchange Statistics**: Live trading pair data and market metrics
+- **Exchange Statistics**: Live trading pair data with 8 KPI cards and cached metrics
 - **Protocol Updates**: Latest announcements and feature releases
+- **Performance Optimized**: Redis caching and lazy loading for faster page loads
+- **Mobile Responsive**: Optimized for all device sizes
 
 ## ✨ Features
+
+### 🚀 Performance & Caching
+- **Redis Caching**: Upstash Redis integration for 1-hour cached metrics
+- **Lazy Loading**: Progressive loading for better user experience
+- **Manual Refresh**: User-controlled data refresh with timestamps
+- **Optimized APIs**: Parallel data fetching for faster load times
 
 ### 🏠 Dashboard
 - **Account Analytics**: Real-time balance tracking and position monitoring
 - **Portfolio Overview**: Comprehensive portfolio insights and performance metrics
 - **Position Management**: Open positions tracking with P&L calculations
 - **Quick Actions**: Direct links to trading and deposit functions
+- **Manual Refresh**: Manual data refresh with last updated timestamps
+- **Address Search**: Search functionality with validation
 
 ### 🔍 Block Explorer
 - **Transaction Search**: Search by transaction hash or block number
@@ -61,6 +70,8 @@ LighterPulse is a comprehensive analytics and exploration platform built specifi
 - **Volume Metrics**: Real-time trading volume and market statistics
 - **Market Analysis**: Comprehensive market data and trends
 - **Performance Tracking**: Historical data and performance metrics
+- **8 KPI Cards**: Total Pairs, Daily Trades, Volume, TVL, Users, TVL Share, Retention, Weekly TVL
+- **Cached Data**: 1-hour cached metrics for better performance
 
 ### 💰 Funding Comparison
 - **Multi-Exchange Support**: Compare funding rates across Lighter, Binance, Bybit, and Hyperliquid
@@ -96,6 +107,12 @@ LighterPulse is a comprehensive analytics and exploration platform built specifi
 - **Linting**: ESLint 9 with Next.js config
 - **TypeScript**: Full type safety and IntelliSense
 - **PostCSS**: CSS processing and optimization
+
+### Backend & Caching
+- **Redis**: Upstash Redis for data caching and performance
+- **API Routes**: Next.js API routes for server-side logic
+- **Dune Analytics**: Blockchain analytics and metrics
+- **Caching Strategy**: 1-hour cache for metrics, real-time for trading data
 
 ## 🚀 Getting Started
 
@@ -148,6 +165,13 @@ Create a `.env.local` file in the root directory:
 NEXT_PUBLIC_API_URL=https://api.lighter.xyz
 NEXT_PUBLIC_WS_URL=wss://api.lighter.xyz/ws
 
+# Dune Analytics API
+DUNE_API_KEY=your-dune-api-key
+
+# Upstash Redis Configuration
+UPSTASH_REDIS_REST_URL=your-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
+
 # Optional: Analytics
 NEXT_PUBLIC_GA_ID=your-google-analytics-id
 ```
@@ -164,8 +188,6 @@ lighterpulse/
 │   ├── explorer/               # Block explorer
 │   │   ├── tx/[txnhash]/       # Transaction details
 │   │   │   └── page.tsx        # Transaction page
-│   │   ├── block/[blockno]/    # Block details // currently not available
-│   │   │   └── page.tsx        # Block page
 │   │   └── page.tsx            # Explorer main page
 │   ├── exchange-stats/         # Exchange statistics
 │   │   └── page.tsx            # Exchange stats page
@@ -175,15 +197,18 @@ lighterpulse/
 │   │   └── page.tsx            # Announcements page
 │   ├── support/               # Support page
 │   │   └── page.tsx            # Support page
+│   ├── api/                   # API routes
+│   │   └── metrics/           # Metrics API endpoint
+│   │       └── route.ts       # Cached metrics API
 │   ├── error.tsx              # Error boundary
 │   ├── global-error.tsx       # Global error boundary
 │   ├── not-found.tsx          # 404 Not Found page
+│   ├── robots.ts              # SEO robots.txt
+│   ├── sitemap.ts             # SEO sitemap
 │   ├── favicon.ico            # Site favicon
 │   ├── globals.css            # Global styles
 │   ├── layout.tsx             # Root layout
 │   └── page.tsx               # Landing page
-│   └── robot.ts               # SEO
-│   └── sitemap.ts             # SEO
 ├── components/                 # Reusable components
 │   ├── aceternity/            # Aceternity UI components
 │   │   ├── glow-cards.tsx     # Glowing card effects
@@ -200,6 +225,7 @@ lighterpulse/
 │       ├── button.tsx         # Button component
 │       └── tooltip.tsx        # Tooltip component
 ├── lib/                       # Utility libraries
+│   ├── redis.ts              # Redis client configuration
 │   └── utils.ts              # Common utilities
 ├── types/                    # TypeScript type definitions
 │   ├── excahngeStats.ts      # Exchange statistics types
@@ -210,9 +236,11 @@ lighterpulse/
 ├── utils/                    # Utility functions
 │   ├── getAnnouncements.ts   # Announcements API
 │   ├── getBalancePositions.ts # Balance & positions API
+│   ├── getCachedMetrics.ts   # Cached metrics utility
 │   ├── getExchangeStats.ts   # Exchange statistics API
 │   ├── getExplorerLandingData.ts # Explorer data API
 │   ├── getFundingData.ts     # Funding data API
+│   ├── getOtherStats.ts      # Additional metrics API
 │   ├── getTransaction.ts     # Transaction data API
 │   └── validation.ts         # Input validation
 ├── public/                   # Static assets
@@ -245,10 +273,18 @@ The application integrates with the Lighter.xyz API for real-time blockchain dat
 - **Market Data**: Trading pairs, prices, and volume statistics
 - **Funding Rates**: Real-time funding rate data across exchanges
 
+### Internal API Endpoints
+
+- **`/api/metrics`**: Cached metrics endpoint with 1-hour Redis caching
+- **Dune Analytics Integration**: Additional blockchain metrics and analytics
+- **Upstash Redis**: High-performance caching layer for improved user experience
+
 ### External APIs
 
 - **Exchange APIs**: Binance, Bybit, Hyperliquid for funding rate comparisons
 - **Blockchain APIs**: Ethereum, Solana, Bitcoin for transaction verification
+- **Dune Analytics**: For additional metrics and analytics data
+- **Upstash Redis**: For caching and performance optimization
 
 ## 📄 Pages & Components
 
@@ -271,10 +307,11 @@ The application integrates with the Lighter.xyz API for real-time blockchain dat
 - Advanced filtering options
 
 ### Exchange Stats (`/exchange-stats`)
-- Live trading pair data
+- Live trading pair data with 8 KPI cards
 - Volume and price metrics
 - Market analysis charts
 - Performance tracking
+- Cached metrics (TVL, Users, Retention, etc.)
 
 ### Funding Comparison (`/funding-comparison`)
 - Multi-exchange funding rate comparison
@@ -377,8 +414,17 @@ npx tsc --noEmit     # Run TypeScript compiler check
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    domains: [
+      'lighter.xyz',
+      'upload.wikimedia.org',
+      'www.citypng.com',
+      'freebiehive.com',
+      'icon2.cleanpng.com'
+    ],
+  },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // Optional: disable ESLint during builds
   },
 };
 
@@ -430,6 +476,8 @@ If you find LighterPulse helpful, consider supporting the developer:
 - **Solana**: `8rFaAgvSdQC2vHymtT2orLdq7E7DntMc6XcK1ig5Fkxv`
 - **Bitcoin**: `bc1pjhcvm40dky2w4kgyv7hg6mxm45r7x2n6rkzm78kx223dsc0h5rqqqq2xhf`
 
+Visit the [Support Page](/support) for more information and easy copy-to-clipboard functionality.
+
 ### Social Media
 
 - **Twitter/X**: [@singhxbt](https://x.com/singhxbt)
@@ -444,6 +492,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Lighter.xyz Team**: For building an amazing protocol
 - **Next.js Team**: For the excellent framework
 - **Aceternity UI**: For beautiful component designs
+- **Upstash**: For Redis caching infrastructure
+- **Dune Analytics**: For blockchain analytics and metrics
 - **Community**: For feedback and contributions
 
 ---
