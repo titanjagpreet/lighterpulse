@@ -4,7 +4,7 @@ import { main as fetchMetrics } from "@/utils/getOtherStats";
 import { redis } from "@/lib/redis";
 
 const CACHE_KEY = "lighterpulse:metrics";
-const CACHE_DURATION_SECONDS = 60 * 60 * 1; 
+const CACHE_DURATION_SECONDS = 60 * 30; 
 
 export async function GET() {
   try {
