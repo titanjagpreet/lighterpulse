@@ -110,7 +110,7 @@ function ExchangeStatsContent() {
         } else if (tvl >= 1000000) {
             return `$${(tvl / 1000000).toFixed(2)}M`;
         } else if (tvl >= 1000) {
-            return `$${(tvl / 1000).toFixed(2)}K`;
+            return `$${(tvl / 1000).toFixed(3)}B`;
         } else {
             return `$${tvl.toFixed(2)}`;
         }
@@ -392,7 +392,7 @@ function ExchangeStatsContent() {
                                     <div className="min-w-0 flex-1">
                                         <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Total TVL</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
-                                            {formatTvl(metricsData?.tvl ?? null)}M
+                                            {formatTvl(metricsData?.tvl ?? null)}
                                         </p>
                                     </div>
                                 </div>
