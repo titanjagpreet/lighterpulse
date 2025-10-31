@@ -241,6 +241,8 @@ lighterpulse/
 │   ├── getExplorerLandingData.ts # Explorer data API
 │   ├── getFundingData.ts     # Funding data API
 │   ├── getOtherStats.ts      # Additional metrics API
+│   ├── getTotalLiquidation.ts # Total 24h liquidation
+│   ├── getTotalOI.ts         # Total real time OI
 │   ├── getTransaction.ts     # Transaction data API
 │   └── validation.ts         # Input validation
 ├── public/                   # Static assets
