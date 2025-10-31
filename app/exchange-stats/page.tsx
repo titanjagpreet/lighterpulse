@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 import { getExchangeStats } from "@/utils/getExchangeStats";
 import { ExchangeStat } from "@/types/excahngeStats";
 import { getCachedMetrics } from "@/utils/getCachedMetrics";
+import { getTotalLiquidation } from "@/utils/getTotalLiquidation";
 import { Metrics } from "@/utils/getOtherStats";
+import { getTotalOI } from "@/utils/getTotalOI";
 import Link from "next/link";
 
 function ExchangeStatsContent() {
@@ -20,6 +22,8 @@ function ExchangeStatsContent() {
     const searchParams = useSearchParams();
     const userAddress = searchParams?.get('from') || "";
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    const [liquidationData, setLiquidationData] = useState<string | null>(null);
+    const [oiData, setOiData] = useState<string | null>(null);
 
     const fetchData = useCallback(async (isInitialLoad = false) => {
         try {
@@ -31,9 +35,21 @@ function ExchangeStatsContent() {
             // Get both datasets at the same time for better performance
             const [exchangeStatsResult, metricsResult] = await Promise.all([
                 getExchangeStats(),
-                getCachedMetrics()
+                getCachedMetrics(),
             ]);
             
+            const liquidationResult = await getTotalLiquidation();
+            console.log("Liquidation result:", liquidationResult);
+            if (liquidationResult?.total_24h_liquidation_usd) {
+                setLiquidationData(liquidationResult.total_24h_liquidation_usd);
+            }
+
+            const oiResult = await getTotalOI();
+            console.log("OI result:", oiResult);
+            if (oiResult?.total_open_interest_usd) {
+                setOiData(oiResult.total_open_interest_usd);
+            }
+
             if (exchangeStatsResult) {
                 setExchangeData(exchangeStatsResult.stats);
             } else {
@@ -369,7 +385,7 @@ function ExchangeStatsContent() {
                                     <div className="min-w-0 flex-1">
                                         <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Total Volume (24h)</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
-                                            ${(exchangeData.reduce((sum, item) => sum + item.dailyQuoteTokenVolume, 0) / 1000000).toFixed(2)}M
+                                            ${(exchangeData.reduce((sum, item) => sum + item.dailyQuoteTokenVolume, 0) / 1_000_000_000).toFixed(2)}B
                                         </p>
                                     </div>
                                 </div>
@@ -438,9 +454,9 @@ function ExchangeStatsContent() {
                                         <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">TVL Share of Top 1% Users</p>
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Open Interest</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
-                                            {formatMetricsPercentage(metricsData?.tvlShare ?? null)}
+                                            {oiData ? `$${(parseFloat(oiData) / 1_000_000_000).toFixed(2)}B` : 'Loading...'}
                                         </p>
                                     </div>
                                 </div>
@@ -484,9 +500,9 @@ function ExchangeStatsContent() {
                                         <Wallet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Weekly TVL</p>
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Liquidations (24h / Top 4)</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
-                                            {formatTvl(metricsData?.weeklyTvl ?? null)}M
+                                        {liquidationData? `$${(parseFloat(liquidationData) / 1_000_000).toFixed(2)}M`: 'Loading...'}
                                         </p>
                                     </div>
                                 </div>
