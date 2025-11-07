@@ -500,7 +500,7 @@ function ExchangeStatsContent() {
                                         <Wallet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Liquidations (24h / Top 4)</p>
+                                        <p className="text-neutral-400 text-xs sm:text-sm mb-1 truncate">Liquidations (24h / Top 7)</p>
                                         <p className="text-base sm:text-lg md:text-2xl font-bold text-white transition-all duration-300">
                                         {liquidationData? `$${(parseFloat(liquidationData) / 1_000_000).toFixed(2)}M`: 'Loading...'}
                                         </p>
