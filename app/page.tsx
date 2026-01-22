@@ -52,7 +52,6 @@ function NavbarResizable() {
                     <NavbarLogo />
                     <NavItems items={navItems} />
                     <div className="hidden sm:flex items-center gap-2 lg:gap-4">
-                        <NavbarButton variant="primary" href="/explorer">Explorer</NavbarButton>
                         <NavbarButton variant="primary" href="/dashboard">Dashboard</NavbarButton>
                     </div>
                 </NavBody>
@@ -82,14 +81,6 @@ function NavbarResizable() {
                             </a>
                         ))}
                         <div className="flex w-full flex-col gap-4">
-                            <NavbarButton
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                variant="primary"
-                                className="w-full"
-                                href="/explorer"
-                            >
-                                Explorer
-                            </NavbarButton>
                             <NavbarButton
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 variant="primary"

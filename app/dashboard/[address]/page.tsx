@@ -48,7 +48,6 @@ export default function DashboardPage({ params }: { params: Promise<DashboardPar
 
     const sidebarItems = useMemo(() => [
         { id: "dashboard", label: "Dashboard", icon: Home, active: true, type: "button" },
-        { id: "explorer", label: "Explorer", icon: Hash, type: "link", href: `/explorer?from=${resolvedParams.address}`},
         { id: "fundings", label: "Fundings", icon: DollarSign, type: "link", href: `/funding-comparison?from=${resolvedParams.address}` },
         { id: "announcements", label: "Announcements", icon: Megaphone, type: "link", href: `/announcements?from=${resolvedParams.address}` },
         { id: "exchange-stats", label: "Exchange Stats", icon: TrendingDown, type: "link", href: `/exchange-stats?from=${resolvedParams.address}` },
