@@ -1,400 +1,511 @@
-"use client";
-import React, { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import { getRouteForInput } from "@/utils/validation";
-import { BackgroundRippleEffect } from "@/components/aceternity/ripple-effect";
-import TrueFocus from "@/components/reactbits/TrueFocus";
-import { PlaceholdersAndVanishInput } from "@/components/aceternity/vanish-input";
-import { Box, Lock, Search, Settings, Sparkles } from "lucide-react";
-import { GlowingEffect } from "@/components/aceternity/glow-cards";
-import ProfileCard from "@/components/reactbits/ProfileCard";
-import { LandingFooter } from "@/components/reactbits/landing-footer";
+import Link from "next/link";
+import { Wordmark } from "@/components/terminal/mark";
+import { CommandSearch } from "@/components/terminal/command-search";
+import { LiveHeight } from "@/components/terminal/live-height";
 import {
-    Navbar,
-    NavBody,
-    NavItems,
-    MobileNav,
-    NavbarLogo,
-    NavbarButton,
-    MobileNavHeader,
-    MobileNavToggle,
-    MobileNavMenu,
-} from "@/components/aceternity/navbar";
+  MarketField,
+  MarketFieldLegend,
+} from "@/components/terminal/market-field";
+import { SeriesChart } from "@/components/terminal/charts";
+import {
+  Delta,
+  Figure,
+  Label,
+  MagnitudeBar,
+  Measure,
+} from "@/components/terminal/primitives";
+import { getOverview } from "@/lib/lighter/overview";
+import { getMetric } from "@/lib/lighter/metrics";
+import { ASSET_CLASS_TAG } from "@/lib/lighter/types";
+import {
+  addr,
+  compact,
+  num,
+  price,
+  usd,
+  usdCompact,
+  usdSigned,
+  dirOf,
+} from "@/lib/format";
 
-// Lazy load heavy components
-const LazyGlowingEffectFeatures = lazy(() => Promise.resolve({ default: GlowingEffectFeatures }));
-const LazyProfileSection = lazy(() => Promise.resolve({ default: ProfileSection }));
-const LazyLandingFooter = lazy(() => Promise.resolve({ default: LandingFooter }));
+export const revalidate = 15;
 
-function NavbarResizable() {
-    const navItems = useMemo(() => [
-        {
-            name: "Fundings",
-            link: "/funding-comparison",
-        },
-        {
-            name: "𝕏",
-            link: "https://x.com/singhxbt",
-        },
-        {
-            name: "Exchange Stats",
-            link: "/exchange-stats",
-        }
-    ], []);
+const NAV = [
+  { href: "/markets", label: "Markets" },
+  { href: "/liquidations", label: "Liquidations" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/explorer", label: "Explorer" },
+];
 
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+export default async function LandingPage() {
+  const [overview, liqSeries] = await Promise.all([
+    getOverview(),
+    getMetric("liquidation_volume", "w").catch(() => null),
+  ]);
 
-    return (
-        <div className="fixed top-0 left-0 right-0 z-50 w-full">
-            <Navbar>
-                {/* Desktop Navigation */}
-                <NavBody>
-                    <NavbarLogo />
-                    <NavItems items={navItems} />
-                    <div className="hidden sm:flex items-center gap-2 lg:gap-4">
-                        <NavbarButton variant="primary" href="/dashboard">Dashboard</NavbarButton>
-                    </div>
-                </NavBody>
+  const o = overview.data;
+  const topMarkets = o.markets.slice(0, 5);
+  const maxVol = Math.max(...topMarkets.map((m) => m.volume24h), 1);
+  const leaders = o.leaders.slice(0, 5);
+  const exampleAddress = leaders[0]?.address;
+  const liq = liqSeries?.data ?? [];
 
-                {/* Mobile Navigation */}
-                <MobileNav>
-                    <MobileNavHeader>
-                        <NavbarLogo />
-                        <MobileNavToggle
-                            isOpen={isMobileMenuOpen}
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        />
-                    </MobileNavHeader>
+  return (
+    <div className="min-h-screen bg-surface">
+      {/* ── header ─────────────────────────────────────────── */}
+      <header className="flex h-14 items-center gap-8 border-b border-line px-6 sm:px-11">
+        <Wordmark size={16} />
+        <div className="grow" />
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Sections">
+          {NAV.map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              className="ctl text-[12.5px] text-ink-2 hover:text-ink"
+            >
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+        <Link
+          href="/overview"
+          className="ctl figure rounded-[3px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink hover:border-ink-4"
+        >
+          Open terminal →
+        </Link>
+      </header>
 
-                    <MobileNavMenu
-                        isOpen={isMobileMenuOpen}
-                        onClose={() => setIsMobileMenuOpen(false)}
-                    >
-                        {navItems.map((item, idx) => (
-                            <a
-                                key={`mobile-link-${idx}`}
-                                href={item.link}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="relative text-neutral-600 dark:text-neutral-300"
-                            >
-                                <span className="block">{item.name}</span>
-                            </a>
-                        ))}
-                        <div className="flex w-full flex-col gap-4">
-                            <NavbarButton
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                variant="primary"
-                                className="w-full"
-                                href="/dashboard"
-                            >
-                                Dashboard
-                            </NavbarButton>
-                        </div>
-                    </MobileNavMenu>
-                </MobileNav>
-            </Navbar>
-            {/* Navbar */}
-        </div>
-    );
-}
-
-function PlaceholdersAndVanishInputBox() {
-    const placeholders = useMemo(() => [
-        "Enter address, transaction hash, or block number",
-        "Try: 0xabc...123, tx hash, or block height"
-    ], []);
-
-    const router = useRouter();
-    const [error, setError] = useState("");
-
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log("Input:", e.target.value);
-    }, []);
-
-    const onSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        const inputEl = e.currentTarget.querySelector("input") as HTMLInputElement;
-        const value = inputEl.value;
-
-        const route = getRouteForInput(value);
-        
-        if (route) {
-            router.push(route);
-        } else {
-            setError("Invalid input. Please enter a valid address, transaction hash, or block number.");
-        }
-    }, [router]);
-
-    return (
-        <div>
-            <PlaceholdersAndVanishInput
-                placeholders={placeholders}
-                onChange={handleChange}
-                onSubmit={onSubmit}
-            />
-            {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
-        </div>
-    );
-}
-
-function GlowingEffectFeatures() {
-    return (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 grid-rows-none gap-4 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2">
-            <GridItem
-                area="sm:[grid-area:1/1/2/2] md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
-                icon={<Box className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Dashboard Analytics"
-                description="Monitor your Lighter.xyz account with real-time balance tracking, position monitoring, and comprehensive portfolio insights."
-            />
-
-            <GridItem
-                area="sm:[grid-area:1/2/2/3] md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]"
-                icon={<Search className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Block Explorer"
-                description="Explore Lighter.xyz blockchain with detailed transaction history, block information, and comprehensive on-chain data analysis."
-            />
-
-            <GridItem
-                area="sm:[grid-area:2/1/3/2] md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]"
-                icon={<Settings className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Funding Comparison"
-                description="Compare funding rates across Lighter, Binance, Bybit, and Hyperliquid with real-time arbitrage opportunities and suggestions."
-            />
-
-            <GridItem
-                area="sm:[grid-area:2/2/3/3] md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]"
-                icon={<Sparkles className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Exchange Statistics"
-                description="Track Lighter.xyz trading pairs with live price data, volume metrics, and comprehensive market statistics."
-            />
-
-            <GridItem
-                area="sm:[grid-area:3/1/4/3] md:[grid-area:3/1/4/13] xl:[grid-area:2/8/3/13]"
-                icon={<Lock className="h-4 w-4 text-black dark:text-neutral-400" />}
-                title="Protocol Announcements"
-                description="Stay updated with the latest Lighter.xyz protocol updates, feature releases, and important community announcements."
-            />
-        </ul>
-    );
-}
-
-// Profile Section Component
-function ProfileSection() {
-    return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#121218] px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-            <div className="flex flex-col lg:flex-row items-center justify-between w-full max-w-6xl gap-8 sm:gap-12 lg:gap-16">
-                {/* Profile Card - Left Side */}
-                <div className="flex-shrink-0 w-full sm:w-80 lg:w-auto">
-                    <ProfileCard
-                        name="SinghXBT"
-                        title="Software Engineer"
-                        handle="singhxbt"
-                        status="Online"
-                        contactText="Contact Me"
-                        avatarUrl="https://pbs.twimg.com/profile_images/1958862285851484160/JWSabHMM_400x400.jpg"
-                        showUserInfo={true}
-                        enableTilt={false}
-                        enableMobileTilt={false}
-                        onContactClick={() => console.log('Contact clicked')}
-                    />
-                </div>
-
-                {/* Developer Details - Right Side */}
-                <div className="flex-1 max-w-2xl space-y-6 sm:space-y-8 w-full lg:w-auto text-center lg:text-left">
-                    {/* Quote */}
-                    <div className="relative">
-                        <div className="absolute -left-4 top-0 h-full w-1 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></div>
-                        <blockquote className="text-lg sm:text-xl lg:text-2xl font-light text-neutral-300 leading-relaxed pl-6 sm:pl-8">
-                            &quot;In the blockchain, we don&apos;t just write code, we write the future, one transaction at a time.&quot;
-                        </blockquote>
-                    </div>
-
-                    {/* Developer Info */}
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3">About Me</h3>
-                            <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
-                                Full-stack developer passionate about Web3, DeFi, and building the decentralized future.
-                                Specialized in smart contract development, DApp architecture, and blockchain integration.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                            <div className="space-y-2">
-                                <h4 className="text-xs sm:text-sm font-medium text-neutral-500 uppercase tracking-wider">Expertise</h4>
-                                <ul className="space-y-1 text-xs sm:text-sm text-neutral-300">
-                                    <li>• Smart Contracts (Solidity)</li>
-                                    <li>• DeFi Protocols</li>
-                                    <li>• Web3 Integration</li>
-                                    <li>• Full-Stack Development</li>
-                                </ul>
-                            </div>
-                            <div className="space-y-2">
-                                <h4 className="text-xs sm:text-sm font-medium text-neutral-500 uppercase tracking-wider">Technologies</h4>
-                                <ul className="space-y-1 text-xs sm:text-sm text-neutral-300">
-                                    <li>• React & Next.js</li>
-                                    <li>• TypeScript</li>
-                                    <li>• Ethereum & EVM</li>
-                                    <li>• GraphQL & APIs</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div className="pt-4">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                                <div className="flex items-center space-x-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                    <span className="text-xs sm:text-sm text-neutral-400">Available for new projects</span>
-                                </div>
-                                <div className="hidden sm:block text-neutral-600">|</div>
-                                <span className="text-xs sm:text-sm text-neutral-400">Based in India</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      {/* ── hero ───────────────────────────────────────────── */}
+      <section className="px-6 pt-14 sm:px-11 sm:pt-[72px]">
+        <div className="grid items-center gap-13 lg:grid-cols-[minmax(0,1fr)_604px]">
+          <div>
+            <div className="mb-7 flex flex-wrap items-center gap-2.5">
+              <LiveHeight />
+              <span className="figure text-[10px] tracking-[0.13em] text-ink-3 uppercase">
+                Lighter mainnet
+              </span>
             </div>
-        </div>
-    );
-}
 
-// Loading Component
-function LoadingSpinner() {
-    return (
-        <div className="flex items-center justify-center h-screen bg-[#121218]">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-neutral-400">Loading...</p>
+            <h1 className="display mb-6 text-[clamp(2.75rem,7vw,4.625rem)]">
+              Read the whole exchange.
+            </h1>
+
+            <p className="mb-10 max-w-[54ch] text-[16.5px] leading-[1.6] text-ink-2">
+              Live market data, liquidation maps, trader leaderboards and a full
+              block explorer for Lighter — in one terminal.
+            </p>
+
+            <div className="mb-7 flex flex-wrap items-stretch gap-2.5">
+              <CommandSearch
+                size="lg"
+                placeholder="Track any address, transaction or block"
+                className="w-full max-w-[470px]"
+              />
+              <Link
+                href="/overview"
+                className="figure ctl flex h-[46px] items-center rounded-[4px] bg-ink px-6 text-[13px] font-medium text-surface hover:bg-white"
+              >
+                Open terminal
+              </Link>
             </div>
+
+            <Measure className="max-w-[640px]" />
+          </div>
+
+          {/* the exchange, as an object */}
+          <div className="flex flex-col gap-3.5">
+            <MarketField markets={o.markets} />
+            <MarketFieldLegend count={o.summary.count} />
+          </div>
         </div>
-    );
-}
+      </section>
 
-interface GridItemProps {
-    area: string;
-    icon: React.ReactNode;
-    title: string;
-    description: React.ReactNode;
-}
+      {/* ── live band ──────────────────────────────────────── */}
+      <section className="mt-11 grid grid-cols-2 divide-x divide-line border-y border-line bg-panel sm:grid-cols-3 lg:grid-cols-5">
+        <LandingStat
+          label="Open interest"
+          value={usdCompact(o.openInterest)}
+          delta={o.oiChangePct}
+        />
+        <LandingStat
+          label="Volume 24h"
+          value={usdCompact(o.volume24h)}
+          delta={o.volumeVs7dPct}
+        />
+        <LandingStat
+          label="Throughput"
+          value={o.tps != null ? num(o.tps) : "—"}
+          unit="tps"
+        />
+        <LandingStat
+          label="Markets"
+          value={num(o.summary.count)}
+          unit="perp"
+        />
+        <LandingStat
+          label="Accounts"
+          value={o.totalAccounts != null ? num(o.totalAccounts) : "—"}
+          sub={
+            o.newAccounts24h != null
+              ? `+${num(o.newAccounts24h)} today`
+              : undefined
+          }
+        />
+      </section>
 
-const GridItem = React.memo(function GridItem({ area, icon, title, description }: GridItemProps) {
-    return (
-        <li className={`min-h-[12rem] sm:min-h-[14rem] lg:min-h-[16rem] list-none ${area}`}>
-            <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
-                <GlowingEffect
-                    spread={40}
-                    glow={true}
-                    disabled={false}
-                    proximity={64}
-                    inactiveZone={0.01}
+      {/* ── 01 markets ─────────────────────────────────────── */}
+      <Section
+        n="01"
+        eyebrow="Markets"
+        title={`${o.summary.count} markets, and no longer just crypto.`}
+        copy="Equities, indices, metals and FX now trade beside perps. Open interest, mark against index, day range, funding and max leverage on every one."
+        cta={{ href: "/markets", label: "Open markets" }}
+      >
+        <div className="label grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-edge pb-2.5">
+          <span>Market</span>
+          <span className="text-right">Mark</span>
+          <span className="text-right">24h</span>
+          <span className="text-right">Open int.</span>
+          <span className="text-right">Volume 24h</span>
+        </div>
+        {topMarkets.map((m) => {
+          const tag = ASSET_CLASS_TAG[m.assetClass];
+          return (
+            <div
+              key={m.marketId}
+              className="grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-hair py-3 last:border-0"
+            >
+              <span className="flex items-baseline gap-2">
+                <span className="text-[13px] font-semibold">{m.symbol}</span>
+                {tag && (
+                  <span
+                    className={`figure text-[8.5px] tracking-[0.07em] ${
+                      m.assetClass === "commodity"
+                        ? "text-warn"
+                        : m.assetClass === "index"
+                          ? "text-info"
+                          : "text-ink-3"
+                    }`}
+                  >
+                    {tag}
+                  </span>
+                )}
+              </span>
+              <Figure className="text-right text-[12.5px]">
+                {price(m.markPrice)}
+              </Figure>
+              <Delta
+                value={m.change24h}
+                glyph={false}
+                className="text-right text-[12.5px]"
+              />
+              <Figure className="text-right text-[12.5px]">
+                {usdCompact(m.oiUsd, 1)}
+              </Figure>
+              <span className="flex flex-col items-end gap-1.5">
+                <Figure className="text-[12.5px] text-ink-2">
+                  {usdCompact(m.volume24h, 1)}
+                </Figure>
+                <MagnitudeBar
+                  value={m.volume24h}
+                  max={maxVol}
+                  width={128}
+                  tone="up"
                 />
-                <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 sm:gap-6 overflow-hidden rounded-xl p-4 sm:p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
-                    <div className="relative flex flex-1 flex-col justify-between gap-3">
-                        <div className="w-fit rounded-lg border border-gray-600 p-2">
-                            {icon}
-                        </div>
-                        <div className="space-y-2 sm:space-y-3">
-                            <h3 className="-tracking-4 pt-0.5 font-sans text-lg/[1.25rem] sm:text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
-                                {title}
-                            </h3>
-                            <h2 className="font-sans text-xs/[1rem] sm:text-sm/[1.125rem] text-black md:text-base/[1.375rem] dark:text-neutral-400 [&_b]:md:font-semibold [&_strong]:md:font-semibold">
-                                {description}
-                            </h2>
-                        </div>
-                    </div>
-                </div>
+              </span>
             </div>
-        </li>
-    );
-});
+          );
+        })}
+      </Section>
 
-export default function LandingPage() {
-    const [showFeatures, setShowFeatures] = useState(false);
-    const [showProfile, setShowProfile] = useState(false);
-    const [showFooter, setShowFooter] = useState(false);
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowFeatures(true);
-        }, 100);
-        return () => clearTimeout(timer);
-    }, []);
-
-    React.useEffect(() => {
-        if (showFeatures) {
-            const timer = setTimeout(() => {
-                setShowProfile(true);
-            }, 200);
-            return () => clearTimeout(timer);
-        }
-    }, [showFeatures]);
-
-    React.useEffect(() => {
-        if (showProfile) {
-            const timer = setTimeout(() => {
-                setShowFooter(true);
-            }, 200);
-            return () => clearTimeout(timer);
-        }
-    }, [showProfile]);
-
-    return (
-        <>
-            <NavbarResizable />
-            
-            {/* Hero Section - Loads immediately */}
-            <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#121218]">
-                <BackgroundRippleEffect />
-
-                <div className="w-full px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="relative z-10 mx-auto max-w-4xl text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 sm:mb-8 text-neutral-800 dark:text-neutral-100 leading-tight">
-                        Your Complete Lighter.xyz Hub
-                    </h2>
-
-                    {/* Animated text */}
-                    <TrueFocus
-                        sentence="Dashboard, Explorer & Insights."
-                        manualMode={false}
-                        blurAmount={4}
-                        borderColor="#17A970"
-                        animationDuration={0.7}
-                        pauseBetweenAnimations={0.5}
-                    />
-
-                    <p className="relative z-10 mx-auto mt-4 sm:mt-6 max-w-xl text-center text-sm sm:text-base lg:text-lg text-neutral-700 dark:text-neutral-400 px-4">
-                        Track, analyze, and explore everything about Lighter.xyz in one place.
-                    </p>
-
-                    {/* Input Box */}
-                    <div className="mt-8 sm:mt-12 lg:mt-14 flex justify-center px-4">
-                        <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg">
-                            <PlaceholdersAndVanishInputBox />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {showFeatures && (
-                <Suspense fallback={<LoadingSpinner />}>
-                    <div className="min-h-screen w-full flex items-center justify-center bg-[#121218] py-8 sm:py-12 lg:py-16">
-                        <div className="w-[90%] sm:w-[85%] md:w-[80%] lg:w-[75%] xl:w-[70%]">
-                            <LazyGlowingEffectFeatures />
-                        </div>
-                    </div>
-                </Suspense>
+      {/* ── 02 liquidations ────────────────────────────────── */}
+      <Section
+        n="02"
+        eyebrow="Liquidations"
+        title="See the wall before you hit it."
+        copy="Liquidation volume mapped by price level, cascades detected as they unfold, and a live tape of every forced exit on the exchange."
+        cta={{ href: "/liquidations", label: "Open liquidations" }}
+      >
+        <div className="mb-4 flex items-baseline gap-3">
+          <Label>Liquidated per day</Label>
+          <span className="figure text-[10.5px] text-ink-3">last 7 sessions</span>
+          <div className="grow" />
+          <Figure className="text-[15px] font-medium text-down">
+            {usdCompact(o.liquidations24h, 2)}
+          </Figure>
+          <span className="figure text-[10.5px] text-ink-3">today</span>
+        </div>
+        {liq.length > 1 ? (
+          <SeriesChart
+            points={liq}
+            variant="bar"
+            valueLabel="liquidated"
+            height={168}
+            tone="brand"
+            format={{ as: "usdCompact", dp: 1 }}
+            xLabels={liq.map((p) =>
+              new Date(p.t).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              }),
             )}
+          />
+        ) : (
+          <p className="py-8 text-center text-[12.5px] text-ink-3">
+            Liquidation history is unavailable right now.
+          </p>
+        )}
+      </Section>
 
-            {showProfile && (
-                <Suspense fallback={<LoadingSpinner />}>
-                    <LazyProfileSection />
-                </Suspense>
-            )}
+      {/* ── 03 traders ─────────────────────────────────────── */}
+      <Section
+        n="03"
+        eyebrow="Traders"
+        title={`All ${o.totalAccounts ? num(o.totalAccounts) : ""} accounts, ranked.`}
+        copy="PnL, return and volume over 24 hours, a week, a month or all time. Every row opens the full book behind it."
+        cta={{ href: "/leaderboard", label: "Open leaderboard" }}
+      >
+        <div className="label grid grid-cols-[36px_minmax(0,1fr)_116px_116px_78px] items-center border-b border-edge pb-2.5">
+          <span>#</span>
+          <span>Account</span>
+          <span className="text-right">Account value</span>
+          <span className="text-right">PnL 24h</span>
+          <span className="text-right">Return</span>
+        </div>
+        {leaders.map((e) => (
+          <Link
+            key={e.address}
+            href={`/a/${e.address}`}
+            className="row-hit grid grid-cols-[36px_minmax(0,1fr)_116px_116px_78px] items-center border-b border-hair py-3 last:border-0"
+          >
+            <Figure className="text-[12px] text-ink-3">{e.rank}</Figure>
+            <Figure className="text-[12.5px]">{addr(e.address)}</Figure>
+            <Figure className="text-right text-[12.5px]">
+              {usd(e.accountValue)}
+            </Figure>
+            <Figure
+              className={`text-right text-[12.5px] font-medium ${
+                dirOf(e.pnl) === "down" ? "text-down" : "text-up"
+              }`}
+            >
+              {usdSigned(e.pnl)}
+            </Figure>
+            <Delta
+              value={e.roi}
+              glyph={false}
+              className="text-right text-[12.5px]"
+            />
+          </Link>
+        ))}
+      </Section>
 
-            {showFooter && (
-                <Suspense fallback={<div className="h-32 bg-[#121218]"></div>}>
-                    <LazyLandingFooter />
-                </Suspense>
-            )}
-        </>
-    );
+      {/* ── 04 your book ───────────────────────────────────── */}
+      <Section
+        n="04"
+        eyebrow="Your book"
+        title="Paste an address. Watch it move."
+        copy="Positions, equity curve, funding cost and distance to liquidation — streaming live over WebSocket. No wallet connection, no signature, no account."
+      >
+        <div className="flex flex-col gap-5">
+          <CommandSearch
+            size="lg"
+            placeholder="0x… any Lighter address"
+            className="max-w-[470px]"
+          />
+          {exampleAddress && (
+            <p className="text-[12.5px] text-ink-3">
+              Or try the top trader:{" "}
+              <Link
+                href={`/a/${exampleAddress}`}
+                className="figure text-ink underline decoration-edge underline-offset-4 hover:decoration-ink-3"
+              >
+                {addr(exampleAddress)}
+              </Link>
+            </p>
+          )}
+          <div className="mt-1 grid gap-px border-t border-hair pt-5 sm:grid-cols-3">
+            {[
+              ["Live positions", "Size, entry, mark and PnL, updating tick by tick."],
+              ["Distance to liquidation", "A bar per position that tightens as risk builds."],
+              ["True cost of carry", "Funding paid and received, per position."],
+            ].map(([h, s]) => (
+              <div key={h} className="pr-6">
+                <div className="mb-1.5 text-[12.5px] font-medium">{h}</div>
+                <p className="text-[12px] leading-[1.55] text-ink-3">{s}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ── since genesis ──────────────────────────────────── */}
+      <section className="flex flex-wrap items-center gap-x-8 gap-y-4 border-y border-line bg-panel px-6 py-6 sm:px-11">
+        <div className="border-r border-line pr-8">
+          <Label className="mb-1">Since genesis</Label>
+          <div className="figure text-[10px] text-ink-4">17 Jan 2025</div>
+        </div>
+        <GenesisStat value={usdCompact(o.genesis.volume, 2)} label="traded" />
+        <GenesisStat
+          value={usdCompact(o.genesis.revenue, 2)}
+          label="protocol revenue"
+        />
+        <GenesisStat value={compact(o.genesis.trades, 2)} label="trades" />
+        <div className="grow" />
+        {o.genesis.activeAccounts != null && (
+          <GenesisStat
+            value={num(o.genesis.activeAccounts)}
+            label="active in the last 24h"
+            tone="up"
+          />
+        )}
+      </section>
+
+      {/* ── footer ─────────────────────────────────────────── */}
+      <footer className="flex flex-wrap items-start gap-10 px-6 py-9 sm:px-11">
+        <div className="flex flex-col gap-3">
+          <Wordmark size={14} tone="muted" pulse={false} />
+          <span className="figure text-[11px] text-ink-4">
+            Built on the public Lighter API. Not affiliated with Lighter.
+          </span>
+        </div>
+        <div className="grow" />
+        <div className="flex gap-14">
+          <FooterCol
+            title="Terminal"
+            links={[
+              ["/overview", "Overview"],
+              ["/markets", "Markets"],
+              ["/liquidations", "Liquidations"],
+            ]}
+          />
+          <FooterCol
+            title="Data"
+            links={[
+              ["/leaderboard", "Leaderboard"],
+              ["/lit", "LIT"],
+              ["/explorer", "Explorer"],
+            ]}
+          />
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+/* ── local pieces ─────────────────────────────────────────── */
+
+function LandingStat({
+  label,
+  value,
+  delta,
+  unit,
+  sub,
+}: {
+  label: string;
+  value: string;
+  delta?: number | null;
+  unit?: string;
+  sub?: string;
+}) {
+  return (
+    <div className="px-5 py-5 sm:px-7">
+      <Label className="mb-2.5">{label}</Label>
+      <div className="flex items-baseline gap-2.5">
+        <Figure className="text-[clamp(1.15rem,2vw,1.5625rem)] font-medium tracking-[-0.028em]">
+          {value}
+        </Figure>
+        {unit && <span className="figure text-[11px] text-ink-3">{unit}</span>}
+        {delta != null && <Delta value={delta} className="text-[11px]" />}
+      </div>
+      {sub && <div className="figure mt-1 text-[10.5px] text-up">{sub}</div>}
+    </div>
+  );
+}
+
+function GenesisStat({
+  value,
+  label,
+  tone,
+}: {
+  value: string;
+  label: string;
+  tone?: "up";
+}) {
+  return (
+    <div className="flex items-baseline gap-2.5">
+      <Figure
+        className={`text-[18px] font-medium tracking-[-0.024em] ${
+          tone === "up" ? "text-up" : ""
+        }`}
+      >
+        {value}
+      </Figure>
+      <span className="text-[12px] text-ink-3">{label}</span>
+    </div>
+  );
+}
+
+function Section({
+  n,
+  eyebrow,
+  title,
+  copy,
+  cta,
+  children,
+}: {
+  n: string;
+  eyebrow: string;
+  title: string;
+  copy: string;
+  cta?: { href: string; label: string };
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="grid gap-10 border-b border-line px-6 py-14 sm:px-11 lg:grid-cols-[372px_minmax(0,1fr)] lg:gap-16">
+      <div>
+        <div className="mb-5 flex items-baseline gap-3">
+          <Figure className="text-[11px] font-semibold tracking-[0.1em] text-brand">
+            {n}
+          </Figure>
+          <Label>{eyebrow}</Label>
+        </div>
+        <h2 className="mb-4 text-[30px] leading-[1.12] font-semibold tracking-[-0.028em] text-balance">
+          {title}
+        </h2>
+        <p className="mb-6 text-[14px] leading-[1.62] text-ink-2">{copy}</p>
+        {cta && (
+          <Link
+            href={cta.href}
+            className="figure ctl inline-block border-b border-edge pb-1 text-[12px] text-ink-2 hover:border-ink-3 hover:text-ink"
+          >
+            {cta.label} →
+          </Link>
+        )}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
+function FooterCol({
+  title,
+  links,
+}: {
+  title: string;
+  links: [string, string][];
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <Label className="mb-0.5">{title}</Label>
+      {links.map(([href, label]) => (
+        <Link
+          key={href}
+          href={href}
+          className="ctl text-[12px] text-ink-2 hover:text-ink"
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
 }
