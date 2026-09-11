@@ -1,137 +1,263 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* ══════════════════════════════════════════════════════════════
+   LighterPulse — terminal design system
+   Dark-only. Colour is data, never decoration.
+   ══════════════════════════════════════════════════════════════ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+@theme {
+  /* ── surfaces ────────────────────────────────────────────── */
+  --color-surface:  #070908;  /* canvas — deepest */
+  --color-panel:    #0B0E0D;  /* panel band */
+  --color-rail:     #090C0B;  /* side rail, one notch under panel */
+  --color-raised:   #0F1312;  /* raised control */
+  --color-hover:    #151A18;  /* hover */
+  --color-active:   #1B211E;  /* selected */
+
+  /* ── rules ───────────────────────────────────────────────── */
+  --color-hair:     #121614;  /* row hairline — barely there */
+  --color-line:     #191F1C;  /* section divider */
+  --color-edge:     #232A27;  /* emphasis / header underline */
+
+  /* ── ink ─────────────────────────────────────────────────── */
+  --color-ink:      #E2E9E5;  /* primary — never pure white */
+  --color-ink-2:    #9BA8A2;  /* secondary */
+  --color-ink-3:    #66736D;  /* labels */
+  --color-ink-4:    #47534E;  /* faint */
+  --color-ink-5:    #333D39;  /* ghost */
+
+  /* ── directional & semantic ──────────────────────────────── */
+  --color-up:        #3FC98A;
+  --color-up-dim:    #1E7A55;
+  --color-up-deep:   #14533A;
+  --color-down:      #E36B5C;
+  --color-down-dim:  #8A4036;
+  --color-down-deep: #5A2B24;
+  --color-warn:      #D9A441;
+  --color-warn-dim:  #6B5320;
+  --color-info:      #5B8DD6;
+  --color-info-dim:  #2C4568;
+
+  /* ── brand — the mark and the pulse only ─────────────────── */
+  --color-brand:     #2ED694;
+
+  /* ── type ────────────────────────────────────────────────── */
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ── motion ──────────────────────────────────────────────── */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   base
+   ══════════════════════════════════════════════════════════════ */
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  color-scheme: dark;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+html {
+  background: var(--color-surface);
 }
 
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-brand) 26%, transparent);
+  color: #fff;
+}
+
+/* Layered so component-level `focus:outline-none` can opt out. Unlayered
+   rules beat every Tailwind utility, which was drawing a ring INSIDE
+   bordered inputs that already show focus on their container. */
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  :focus-visible {
+    outline: 1px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 2px;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  /* A field inside a bordered shell delegates focus to that shell. */
+  input:focus,
+  input:focus-visible {
+    outline: none;
   }
 }
 
---animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1
-  var(--delay, 0ms);
+/* thin, quiet scrollbars — chrome must never compete with data */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge) transparent;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-edge);
+  border: 2px solid var(--color-surface);
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover { background: #2E3733; }
 
-@keyframes cell-ripple {
-  0% {
-    opacity: 0.4;
+/* ══════════════════════════════════════════════════════════════
+   type utilities
+   ══════════════════════════════════════════════════════════════ */
+
+/* every figure in the product wears this — columns align on the decimal */
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* uppercase micro-label — the terminal's connective tissue */
+.label {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+  line-height: 1.4;
+}
+
+/* display type for the landing — tight, confident, optical */
+.display {
+  font-weight: 700;
+  letter-spacing: -0.038em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   identity motifs
+   ══════════════════════════════════════════════════════════════ */
+
+/* The measure — a fine ruler scale. The house motif: it sits under
+   hero figures, never as a plain divider. */
+.measure {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-edge) 0px,
+    var(--color-edge) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+
+/* Live rail — marks a panel as streaming. Vertical, left edge. */
+.live-rail {
+  position: relative;
+}
+.live-rail::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in oklab, var(--color-brand) 55%, transparent) 18%,
+    color-mix(in oklab, var(--color-brand) 55%, transparent) 82%,
+    transparent
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   motion — restrained, purposeful
+   ══════════════════════════════════════════════════════════════ */
+
+/* the pulse: the mark breathes with the chain */
+@keyframes pulse-mark {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.pulse-mark { animation: pulse-mark 2.4s var(--ease-out-quint) infinite; }
+
+/* a value that just changed gets one quiet flash — ink, never colour */
+@keyframes tick-flash {
+  0%   { background-color: color-mix(in oklab, var(--color-ink) 13%, transparent); }
+  100% { background-color: transparent; }
+}
+.tick-flash { animation: tick-flash 620ms ease-out 1; }
+
+/* live dot halo */
+@keyframes live-halo {
+  0%, 100% { box-shadow: 0 0 0 2.5px color-mix(in oklab, var(--color-brand) 16%, transparent); }
+  50%      { box-shadow: 0 0 0 4px   color-mix(in oklab, var(--color-brand) 8%,  transparent); }
+}
+.live-halo { animation: live-halo 2.4s ease-in-out infinite; }
+
+/* the market field drifts, slowly */
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.drift { animation: drift 9s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
+/* entrance: one orchestrated settle, from a visible resting state */
+@keyframes settle {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.settle { animation: settle 620ms var(--ease-out-quint) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 0.4;
-  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   interaction
+   ══════════════════════════════════════════════════════════════ */
+
+.row-hit { transition: background-color 110ms linear; }
+.row-hit:hover { background-color: var(--color-panel); }
+
+.ctl {
+  transition: background-color 120ms linear, border-color 120ms linear,
+              color 120ms linear;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LEGACY COMPAT — remove once the old routes are deleted.
+   The pre-revamp pages and components/ui/* reference shadcn token
+   names. Kept so nothing renders unstyled mid-migration.
+   ══════════════════════════════════════════════════════════════ */
+@theme {
+  --color-background:          #070908;
+  --color-foreground:          #E2E9E5;
+  --color-card:                #0B0E0D;
+  --color-card-foreground:     #E2E9E5;
+  --color-popover:             #0B0E0D;
+  --color-popover-foreground:  #E2E9E5;
+  --color-primary:             #E2E9E5;
+  --color-primary-foreground:  #070908;
+  --color-secondary:           #1B211E;
+  --color-secondary-foreground:#E2E9E5;
+  --color-muted:               #1B211E;
+  --color-muted-foreground:    #9BA8A2;
+  --color-accent:              #1B211E;
+  --color-accent-foreground:   #E2E9E5;
+  --color-destructive:         #E36B5C;
+  --color-border:              #191F1C;
+  --color-input:               #232A27;
+  --color-ring:                #2ED694;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
 }
