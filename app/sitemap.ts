@@ -1,50 +1,16 @@
-import { MetadataRoute } from 'next'
+import type { MetadataRoute } from "next";
+
+const BASE = "https://lighterpulse.xyz";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://lighterpulse.xyz'
-  
+  const now = new Date();
   return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/dashboard`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/explorer`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/exchange-stats`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/funding-comparison`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/announcements`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/support`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-  ]
+    { url: BASE, lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE}/overview`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/markets`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/liquidations`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${BASE}/leaderboard`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${BASE}/lit`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${BASE}/explorer`, lastModified: now, changeFrequency: "hourly", priority: 0.7 },
+  ];
 }
