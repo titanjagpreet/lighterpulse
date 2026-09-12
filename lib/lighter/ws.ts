@@ -36,6 +36,8 @@ class LighterSocket {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closedByUs = false;
+  /** Channels whose subscribe snapshot has already been delivered. */
+  private snapshotted = new Set<string>();
   status: WsStatus = "closed";
 
   private setStatus(s: WsStatus) {
@@ -91,6 +93,7 @@ class LighterSocket {
       // The server answers `channel` with ':' where subscribes use '/'.
       const raw = typeof msg.channel === "string" ? msg.channel : "";
       const normalised = raw.replace(/:/g, "/");
+      if (String(msg.type ?? "").startsWith("subscribed")) this.snapshotted.add(normalised);
       const set = this.handlers.get(normalised) ?? this.handlers.get(raw);
       set?.forEach((h) => {
         try {
@@ -108,6 +111,7 @@ class LighterSocket {
     socket.onclose = () => {
       this.cleanupTimers();
       this.ws = null;
+      this.snapshotted.clear();
       this.setStatus("closed");
       if (!this.closedByUs && this.handlers.size > 0) this.scheduleReconnect();
     };
@@ -138,12 +142,30 @@ class LighterSocket {
     }
   }
 
+  /**
+   * Drop and re-take a channel to force a fresh snapshot. Delta streams call
+   * this on a sequence gap — patching over a gap would leave local state
+   * silently wrong, and the server answers a new subscribe with a full copy.
+   */
+  resubscribe(channel: string) {
+    if (!this.handlers.has(channel)) return;
+    this.send(channel, "unsubscribe");
+    this.send(channel, "subscribe");
+  }
+
   subscribe(channel: string, handler: Handler): () => void {
     let set = this.handlers.get(channel);
     if (!set) {
       set = new Set();
       this.handlers.set(channel, set);
       if (this.ws?.readyState === 1) this.send(channel, "subscribe");
+    } else if (this.snapshotted.has(channel)) {
+      // The server sends a channel's snapshot once, to the first subscriber.
+      // A component that joins later would only ever see deltas — an order
+      // book with no levels, a stats map with one market — so ask again.
+      // Every consumer tolerates a repeat: books reset, the rest de-duplicate.
+      this.snapshotted.delete(channel);
+      this.resubscribe(channel);
     }
     set.add(handler);
 
@@ -155,6 +177,7 @@ class LighterSocket {
       s.delete(handler);
       if (s.size === 0) {
         this.handlers.delete(channel);
+        this.snapshotted.delete(channel);
         this.send(channel, "unsubscribe");
       }
       if (this.handlers.size === 0) {

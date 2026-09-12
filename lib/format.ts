@@ -169,11 +169,53 @@ export const dirText: Record<Dir, string> = {
   flat: "text-ink-4",
 };
 
-/** Seconds until the next 8h funding boundary (00:00, 08:00, 16:00 UTC). */
+/**
+ * Seconds until the next funding settlement. Lighter settles at the top of
+ * every hour; the rate is only *quoted* on an 8-hour basis.
+ */
 export function secondsToNextFunding(now = new Date()): number {
   const next = new Date(now);
-  next.setUTCHours(Math.floor(now.getUTCHours() / 8) * 8 + 8, 0, 0, 0);
+  next.setUTCMinutes(60, 0, 0);
   return Math.max(0, Math.floor((next.getTime() - now.getTime()) / 1000));
+}
+
+/**
+ * The stream and `fundings` quote a signed percentage per HOUR ("0.0012");
+ * the rest of the product uses an 8-hour ratio (0.000096). One conversion,
+ * in one place, so the two can never be mixed again.
+ */
+export function hourlyPctToEightHour(v: number): number {
+  return (v / 100) * 8;
+}
+
+/** 8-hour funding ratio → annualised percentage (three settlements a day). */
+export function aprPct(eightHourRatio: number | null | undefined): number | null {
+  if (eightHourRatio == null || !Number.isFinite(eightHourRatio)) return null;
+  return eightHourRatio * 3 * 365 * 100;
+}
+
+const DAY_MS = 86_400_000;
+
+/** "Sep 10", or "Sep 10, 2025" when the reader needs the year. */
+export function dayLabel(t: number, withYear = false): string {
+  return new Date(t).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: withYear ? "numeric" : undefined,
+    timeZone: "UTC",
+  });
+}
+
+/** Axis tick for a date, coarsening as the visible span grows. */
+export function dateTick(t: number, spanMs: number): string {
+  if (spanMs > 300 * DAY_MS) {
+    return new Date(t).toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+      timeZone: "UTC",
+    });
+  }
+  return dayLabel(t);
 }
 
 /** Safe numeric coercion for string-typed API fields. */

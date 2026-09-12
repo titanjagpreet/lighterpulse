@@ -6,7 +6,7 @@ import { Figure } from "./primitives";
 import { cn } from "@/lib/utils";
 
 /**
- * Countdown to the next 8h funding boundary (00:00, 08:00, 16:00 UTC).
+ * Countdown to the next funding settlement — the top of every hour, UTC.
  *
  * Rendered empty on the server and filled on mount — a server-rendered
  * countdown would be wrong the moment it was cached.
