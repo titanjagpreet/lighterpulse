@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { CommandSearch } from "@/components/terminal/command-search";
+import { TimeAgo } from "@/components/terminal/as-of";
 import {
   AsOf,
   Chip,
@@ -13,7 +15,7 @@ import {
   getExplorerBlocks,
   getExplorerTotals,
 } from "@/lib/lighter/explorer";
-import { ago, hash, num } from "@/lib/format";
+import { hash, num } from "@/lib/format";
 
 export const revalidate = 10;
 
@@ -21,6 +23,7 @@ export const metadata: Metadata = {
   title: "Explorer",
   description:
     "Blocks, batches, transactions and accounts on the Lighter zk-rollup. Live chain totals and L1 settlement status.",
+  alternates: { canonical: "/explorer" },
 };
 
 export default async function ExplorerPage() {
@@ -39,7 +42,7 @@ export default async function ExplorerPage() {
         </h1>
         <CommandSearch
           size="lg"
-          placeholder="Search a block, batch, transaction or account — the chain classifies it"
+          placeholder="Block, transaction, account or market"
           className="mb-6 max-w-[720px]"
         />
 
@@ -51,7 +54,7 @@ export default async function ExplorerPage() {
         </div>
         {totals && (
           <div className="mt-2.5">
-            <AsOf age={totals.age} stale={totals.stale} />
+            <AsOf asOf={totals.asOf} ttl={totals.ttl} source={totals.source} />
           </div>
         )}
       </div>
@@ -71,8 +74,9 @@ export default async function ExplorerPage() {
           </div>
 
           {(blocks?.data ?? []).slice(0, 12).map((b) => (
-            <div
+            <Link
               key={b.height}
+              href={`/explorer/block/${b.height}`}
               className="row-hit grid grid-cols-[minmax(0,1fr)_92px_120px_72px] items-center border-b border-hair py-2.5 last:border-0"
             >
               <Figure className="text-[12.5px] text-ink">{num(b.height)}</Figure>
@@ -87,9 +91,9 @@ export default async function ExplorerPage() {
                 )}
               </span>
               <Figure className="text-right text-[11.5px] text-ink-3">
-                {ago(b.updatedAt)}
+                <TimeAgo t={b.updatedAt} />
               </Figure>
-            </div>
+            </Link>
           ))}
 
           {!blocks?.data.length && (
@@ -124,7 +128,7 @@ export default async function ExplorerPage() {
                     href={`https://etherscan.io/tx/${b.commitTx}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="figure ctl text-[11.5px] text-ink-2 hover:text-ink"
+                    className="figure ctl -my-2 py-2 text-[11.5px] text-ink-2 hover:text-ink"
                   >
                     {hash(b.commitTx, 6, 4)} ↗
                   </a>
@@ -133,7 +137,7 @@ export default async function ExplorerPage() {
                 )}
               </span>
               <Figure className="text-right text-[11.5px] text-ink-3">
-                {ago(b.updatedAt)}
+                <TimeAgo t={b.updatedAt} />
               </Figure>
             </div>
           ))}

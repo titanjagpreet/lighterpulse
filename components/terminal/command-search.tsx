@@ -18,7 +18,7 @@ const BLOCK_NUMBER = /^\d{1,12}$/;
 const TX_HASH = /^(0x)?[0-9a-fA-F]{32,128}$/;
 
 export function CommandSearch({
-  placeholder = "Address, transaction, block or account",
+  placeholder = "Market, address, tx or block",
   size = "sm",
   className,
   autoFocus = false,
@@ -100,9 +100,9 @@ export function CommandSearch({
 
   return (
     <form onSubmit={submit} className={cn("relative", className)}>
-      <div
+      <label
         className={cn(
-          "ctl flex items-center gap-3 rounded-[4px] border border-edge bg-panel",
+          "ctl flex cursor-text items-center gap-3 rounded-[4px] border border-edge bg-panel",
           lg ? "h-[46px] px-3.5" : "h-[30px] px-2.5",
           "focus-within:border-ink-3",
         )}
@@ -134,7 +134,7 @@ export function CommandSearch({
           autoFocus={autoFocus}
           spellCheck={false}
           autoComplete="off"
-          aria-label="Search address, transaction, block or account"
+          aria-label="Search markets, addresses, transactions and blocks"
           className={cn(
             "figure grow bg-transparent text-ink placeholder:text-ink-3 focus:outline-none",
             lg ? "text-[13px]" : "text-[11px]",
@@ -147,7 +147,7 @@ export function CommandSearch({
             /
           </kbd>
         )}
-      </div>
+      </label>
       {error && (
         <p className="figure absolute top-full left-0 mt-1.5 text-[10.5px] text-down">
           {error}

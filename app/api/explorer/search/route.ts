@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchExplorer } from "@/lib/lighter/explorer";
+import { getMarkets } from "@/lib/lighter/markets";
 import { rateLimit } from "@/lib/redis";
 
 /**
@@ -57,6 +58,16 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (!q || q.length > 96) {
     return NextResponse.json({ error: "bad query" }, { status: 400 });
+  }
+
+  // A market symbol resolves from the cached market list — no explorer call,
+  // and no charge against the per-IP search quota below.
+  if (/^[A-Za-z0-9]{1,16}$/.test(q) && !/^\d+$/.test(q)) {
+    const markets = await getMarkets().catch(() => null);
+    const market = markets?.data.find((m) => m.symbol.toLowerCase() === q.toLowerCase());
+    if (market) {
+      return NextResponse.json({ href: `/markets/${market.symbol}`, type: "market" });
+    }
   }
 
   const limit = await rateLimit(`lp:rl:search:${clientIp(req)}`, 10, 60);

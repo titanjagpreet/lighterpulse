@@ -210,7 +210,7 @@ export function MarketField({
               <circle cx={x} cy={top - 3} r="1.5" fill="#9BA8A2" />
               <text
                 x={x}
-                y={ly - 10}
+                y={ly - 13}
                 textAnchor="middle"
                 fill="#E2E9E5"
                 fontFamily="var(--font-mono)"

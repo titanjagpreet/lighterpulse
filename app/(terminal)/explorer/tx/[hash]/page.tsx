@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTx } from "@/lib/lighter/explorer";
 import { AsOf, Chip, Figure, Label } from "@/components/terminal/primitives";
-import { ago, hash as shortHash } from "@/lib/format";
+import { TimeAgo } from "@/components/terminal/as-of";
+import { hash as shortHash } from "@/lib/format";
 
 export const revalidate = 300;
 
@@ -16,6 +17,7 @@ export async function generateMetadata({
   return {
     title: `Transaction ${shortHash(hash)}`,
     description: `Lighter transaction ${shortHash(hash)} — type, time and decoded payload.`,
+    alternates: { canonical: `/explorer/tx/${hash}` },
   };
 }
 
@@ -35,12 +37,12 @@ export default async function TxPage({
   return (
     <div className="px-5 py-6">
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Label>Transaction</Label>
+        <h1 className="label">Transaction</h1>
         <Chip tone={tx.type.includes("Liquidate") ? "down" : "neutral"}>
           {label}
         </Chip>
         <div className="grow" />
-        <AsOf age={res.age} stale={res.stale} />
+        <AsOf asOf={res.asOf} ttl={res.ttl} source={res.source} />
       </div>
 
       <dl className="mb-7 grid max-w-[820px] grid-cols-1 gap-px overflow-hidden rounded-[3px] border border-line bg-line">
@@ -54,9 +56,13 @@ export default async function TxPage({
           <dt className="label mb-1.5">Time</dt>
           <dd>
             <Figure className="text-[13px]">
-              {tx.time
-                ? `${new Date(tx.time).toUTCString()} · ${ago(tx.time)} ago`
-                : "—"}
+              {tx.time ? (
+                <>
+                  {new Date(tx.time).toUTCString()} · <TimeAgo t={tx.time} suffix=" ago" />
+                </>
+              ) : (
+                "—"
+              )}
             </Figure>
           </dd>
         </div>

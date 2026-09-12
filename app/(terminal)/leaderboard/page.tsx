@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   title: "Leaderboard",
   description:
     "Every Lighter account ranked by PnL, return, volume or account value — over 24 hours, a week, a month or all time.",
+  alternates: { canonical: "/leaderboard" },
 };
 
 const WINDOW_LABEL: Record<LeaderWindow, string> = {
@@ -66,7 +67,7 @@ export default async function LeaderboardPage({
               ? `${num(totals.data.accounts)} accounts ranked`
               : "Accounts ranked"}
             <span className="text-ink-5">·</span>
-            <AsOf age={board.age} stale={board.stale} />
+            <AsOf asOf={board.asOf} ttl={board.ttl} source={board.source} />
           </p>
         </div>
 
@@ -118,7 +119,7 @@ export default async function LeaderboardPage({
       {/* ── table ──────────────────────────────────────────── */}
       <div className="overflow-x-auto px-5">
         <div className="min-w-[880px]">
-          <div className="label grid grid-cols-[56px_minmax(0,1fr)_168px_168px_116px_168px] items-center border-b border-edge pb-2.5">
+          <div className="label grid grid-cols-[56px_minmax(0,1fr)_168px_168px_116px_168px] items-center border-b border-edge pt-3.5 pb-2.5">
             <span>Rank</span>
             <span>Account</span>
             <span className="text-right">Account value</span>
