@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { MarketsTable } from "@/components/terminal/markets-table";
 import { FundingClock } from "@/components/terminal/funding-clock";
+import { Movers } from "@/components/terminal/movers";
 import {
   AsOf,
   Figure,
   Label,
   MagnitudeBar,
 } from "@/components/terminal/primitives";
+import Link from "next/link";
 import { getMarkets, summarise } from "@/lib/lighter/markets";
+import { getPriceCharts } from "@/lib/lighter/charts";
+import { getOiLatest } from "@/lib/lighter/open-interest";
 import { ASSET_CLASS_LABEL } from "@/lib/lighter/types";
 import { num, usdCompact } from "@/lib/format";
 
@@ -16,16 +20,25 @@ export const revalidate = 15;
 export const metadata: Metadata = {
   title: "Markets",
   description:
-    "Every Lighter market — open interest, mark against index, day range, funding and max leverage. Crypto, equities, indices, commodities and FX.",
+    "Every Lighter market — open interest, mark against index, day range, funding and max leverage, with the day's biggest movers. Crypto, equities, indices, commodities and FX.",
+  alternates: { canonical: "/markets" },
 };
 
 export default async function MarketsPage() {
-  const cached = await getMarkets();
+  const [cached, sparks, oiLatest] = await Promise.all([
+    getMarkets(),
+    getPriceCharts().catch(() => null),
+    getOiLatest().catch(() => null),
+  ]);
+  const oiChanges: Record<number, number | null> = {};
+  for (const [id, v] of Object.entries(oiLatest?.markets ?? {})) oiChanges[Number(id)] = v.d24h;
   const markets = cached.data;
   const s = summarise(markets);
 
   return (
     <div>
+      <h1 className="sr-only">Lighter markets</h1>
+
       {/* ── summary band ───────────────────────────────────── */}
       <div className="grid border-b border-line bg-panel lg:grid-cols-[300px_minmax(0,1fr)_300px]">
         <div className="border-line px-5 py-4 lg:border-r">
@@ -99,14 +112,26 @@ export default async function MarketsPage() {
         <div className="px-5 py-4">
           <div className="mb-2.5 flex items-baseline gap-3">
             <Label>Next funding</Label>
-            <span className="figure text-[10px] text-ink-4">8h cycle</span>
+            <span className="figure text-[10px] text-ink-4">settles hourly</span>
           </div>
           <FundingClock />
           <div className="mt-2">
-            <AsOf age={cached.age} stale={cached.stale} />
+            <AsOf asOf={cached.asOf} ttl={cached.ttl} source={cached.source} />
           </div>
         </div>
       </div>
+
+      {/* ── movers ─────────────────────────────────────────── */}
+      <Movers
+        markets={markets.map((m) => ({
+          marketId: m.marketId,
+          symbol: m.symbol,
+          markPrice: m.markPrice,
+          change24h: m.change24h,
+          volume24h: m.volume24h,
+          active: m.active,
+        }))}
+      />
 
       {/* ── open interest distribution ─────────────────────── */}
       <div className="border-b border-line px-5 py-3.5">
@@ -121,7 +146,11 @@ export default async function MarketsPage() {
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {markets.slice(0, 12).map((m) => (
-            <span key={m.marketId} className="flex items-center gap-2">
+            <Link
+              key={m.marketId}
+              href={`/markets/${m.symbol}`}
+              className="ctl -my-1 flex items-center gap-2 py-1 hover:text-ink"
+            >
               <span className="text-[11.5px] font-medium">{m.symbol}</span>
               <MagnitudeBar
                 value={m.oiUsd}
@@ -133,12 +162,12 @@ export default async function MarketsPage() {
               <Figure className="text-[10.5px] text-ink-3">
                 {usdCompact(m.oiUsd, 1)}
               </Figure>
-            </span>
+            </Link>
           ))}
         </div>
       </div>
 
-      <MarketsTable initial={markets} />
+      <MarketsTable initial={markets} sparks={sparks?.data ?? {}} oiChanges={oiChanges} />
     </div>
   );
 }
