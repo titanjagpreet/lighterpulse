@@ -1,7 +1,7 @@
 import "server-only";
 import { api } from "./client";
 import { cached, type Cached } from "../cache";
-import type { MetricKind, MetricPeriod, MetricPoint } from "./types";
+import type { DailySeries, MetricKind, MetricPeriod, MetricPoint } from "./types";
 
 /**
  * `exchangeMetrics` — the endpoint that replaces the entire Dune dependency
@@ -44,6 +44,40 @@ export function getMetric(
   // tps moves every 10s; the rest are daily buckets and can sit longer.
   const ttl = kind === "tps" ? 20 : 300;
   return cached(`metric:${kind}:${period}`, ttl, () => fetchMetric(kind, period));
+}
+
+/**
+ * The whole daily history of a kind, compacted for the wire. Every range a
+ * chart offers is a slice of this one cached call — `w`, `m`, `q` and `y` are
+ * verified to be exact tails of `all`, so fetching them separately would only
+ * spend rate limit on bytes we already hold.
+ */
+export async function getDaily(
+  kind: Exclude<MetricKind, "tps">,
+  dp = 2,
+): Promise<Cached<DailySeries>> {
+  const c = await getMetric(kind, "all");
+  return { ...c, data: toDaily(c.data, dp) };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Compact a daily series. Buckets are gap-free today (checked across every
+ * kind); should one ever go missing, it is filled with zero rather than
+ * silently shifting every later date by a day.
+ */
+export function toDaily(points: MetricPoint[], dp = 2): DailySeries {
+  if (points.length === 0) return { start: 0, values: [] };
+  const f = 10 ** dp;
+  const start = points[0].t;
+  const values: number[] = [];
+  for (const p of points) {
+    const i = Math.round((p.t - start) / DAY_MS);
+    while (values.length < i) values.push(0);
+    values[i] = Math.round(p.v * f) / f;
+  }
+  return { start, values };
 }
 
 /* ── helpers over a series ───────────────────────────────────── */

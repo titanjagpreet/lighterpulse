@@ -1,10 +1,10 @@
 import "server-only";
 import { cached, type Cached } from "../cache";
 import { getMarkets, summarise, type MarketSummary } from "./markets";
-import { getMetric, currentTps, last, sum, mean } from "./metrics";
+import { getDaily, getMetric, currentTps, last, sum, mean } from "./metrics";
 import { getExplorerTotals } from "./explorer";
 import { getLeaderboard } from "./leaderboard";
-import type { LeaderboardEntry, Market, MetricPoint } from "./types";
+import type { DailySeries, LeaderboardEntry, Market, MetricPoint } from "./types";
 
 /**
  * The composite the Landing and Overview both render from. Assembling it here
@@ -172,3 +172,98 @@ async function buildOverview(): Promise<OverviewData> {
  */
 export const getOverview = (): Promise<Cached<OverviewData>> =>
   cached("overview", 15, buildOverview);
+
+/* ── long histories, for the range-controlled charts ─────────── */
+
+export interface OverviewSeries {
+  volume: DailySeries | null;
+  openInterest: DailySeries | null;
+  inflow: DailySeries | null;
+  outflow: DailySeries | null;
+  /** Deposits minus withdrawals, per day. */
+  netFlow: DailySeries | null;
+  newAccounts: DailySeries | null;
+  activeAccounts: DailySeries | null;
+  /** Maker plus taker fees, per day. */
+  fees?: DailySeries | null;
+  makerFees?: DailySeries | null;
+  takerFees?: DailySeries | null;
+}
+
+const DAY = 86_400_000;
+
+/** Add two daily series bucket by bucket, over the dates the first covers. */
+function addDaily(a: DailySeries, b: DailySeries): DailySeries {
+  return {
+    start: a.start,
+    values: a.values.map((v, i) => {
+      const j = Math.round((a.start + i * DAY - b.start) / DAY);
+      return v + (b.values[j] ?? 0);
+    }),
+  };
+}
+
+async function buildOverviewSeries(): Promise<OverviewSeries> {
+  const grab = async (kind: Parameters<typeof getDaily>[0], dp: number) => {
+    try {
+      return (await getDaily(kind, dp)).data;
+    } catch (err) {
+      console.error(`[overview:series] ${kind} failed`, err);
+      return null;
+    }
+  };
+
+  const [
+    volume,
+    openInterest,
+    inflow,
+    outflow,
+    newAccounts,
+    activeAccounts,
+    makerFees,
+    takerFees,
+  ] = await Promise.all([
+    grab("volume", 0),
+    grab("open_interest", 0),
+    grab("inflow", 0),
+    grab("outflow", 0),
+    grab("account_count", 0),
+    grab("active_account_count", 0),
+    grab("maker_fee", 0),
+    grab("taker_fee", 0),
+  ]);
+
+  let netFlow: DailySeries | null = null;
+  if (inflow && outflow) {
+    const values: number[] = [];
+    for (let i = 0; i < inflow.values.length; i++) {
+      const j = Math.round((inflow.start + i * DAY - outflow.start) / DAY);
+      const out = outflow.values[j];
+      values.push(out == null ? 0 : inflow.values[i] - out);
+    }
+    netFlow = { start: inflow.start, values };
+  }
+
+  const fees = makerFees && takerFees ? addDaily(takerFees, makerFees) : null;
+
+  return {
+    volume,
+    openInterest,
+    inflow,
+    outflow,
+    netFlow,
+    newAccounts,
+    activeAccounts,
+    fees,
+    makerFees,
+    takerFees,
+  };
+}
+
+/**
+ * Six daily histories in one read. Each is already cached on its own; the
+ * composite exists so a render costs one Redis round trip, not six. These
+ * are completed-day buckets, so five minutes is generous.
+ */
+export const getOverviewSeries = (): Promise<Cached<OverviewSeries>> =>
+  cached("overview:series", 300, buildOverviewSeries);

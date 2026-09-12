@@ -21,7 +21,7 @@ export const ASSET_CLASS_LABEL: Record<AssetClass, string> = {
 export const ASSET_CLASS_TAG: Partial<Record<AssetClass, string>> = {
   equity: "EQUITY",
   index: "INDEX",
-  commodity: "COMMOD",
+  commodity: "CMDTY",
   fx: "FX",
   bond: "BOND",
 };
@@ -75,6 +75,17 @@ export interface MetricPoint {
   /** Epoch ms. */
   t: number;
   v: number;
+}
+
+/**
+ * A contiguous daily series, compacted for the wire. Every `exchangeMetrics`
+ * kind is gap-free at one bucket per UTC day, so a start and a list of values
+ * carry the same information as 600 `{t, v}` objects at a fifth of the bytes.
+ */
+export interface DailySeries {
+  /** Epoch ms of the first bucket, 00:00 UTC. */
+  start: number;
+  values: number[];
 }
 
 export interface LeaderboardEntry {

@@ -29,6 +29,8 @@ export interface Cached<T> {
   /** True when serving a last-good payload past its TTL. */
   stale: boolean;
   source: Source;
+  /** The TTL this value is cached under, in seconds. */
+  ttl: number;
 }
 
 /** What gets stored; `age` is derived, so it is deliberately absent. */
@@ -197,7 +199,12 @@ export async function cached<T>(
     Math.round((Date.now() - new Date(snapshot.asOf).getTime()) / 1000),
   );
 
-  return { ...snapshot, age, stale: snapshot.stale || age > ttlSeconds * 3 };
+  return {
+    ...snapshot,
+    age,
+    stale: snapshot.stale || age > ttlSeconds * 3,
+    ttl: ttlSeconds,
+  };
 }
 
 /** Drop a key so the next read refetches. Used by the revalidate route. */
