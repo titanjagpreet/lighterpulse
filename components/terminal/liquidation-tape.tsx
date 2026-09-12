@@ -1,109 +1,102 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiquidationFeed } from "@/lib/lighter/use-liquidations";
 import { Figure, Label, MetricCell, SplitBar } from "./primitives";
-import { ago, num, pctPlain, usd, usdCompact } from "@/lib/format";
+import { TimeAgo } from "./as-of";
+import { num, pctPlain, usd, usdCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Markets = { marketId: number; symbol: string }[];
 
+function useFlash(trigger: number | null) {
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (trigger == null) return;
+    setFlash(true);
+    const id = setTimeout(() => setFlash(false), 620);
+    return () => clearTimeout(id);
+  }, [trigger]);
+  return flash;
+}
+
 /**
- * The headline 24h figure, ticking.
+ * The headline, plus what has happened since.
  *
- * The server figure is a daily bucket from `exchangeMetrics`; anything that
- * lands after this page was rendered is added on top. Because the bucket was
- * fetched before those events happened, there is no double counting.
+ * `exchangeMetrics` only publishes completed UTC days, so the headline is the
+ * last full day — labelled as such. What lands while the page is open ticks
+ * beneath it rather than being added on top, which would blend two different
+ * windows into one number that describes neither.
  */
 export function LiveLiquidationStat({
   markets,
   base,
   baseCount,
+  baseDay,
 }: {
   markets: Markets;
   base: number | null;
   baseCount: number | null;
+  /** Label for the day `base` covers, e.g. "Sep 10". */
+  baseDay: string | null;
 }) {
-  const { sessionUsd, sessionCount, live, lastAt } = useLiquidationFeed(markets);
-  const [flash, setFlash] = useState(false);
-
-  useEffect(() => {
-    if (lastAt == null) return;
-    setFlash(true);
-    const id = setTimeout(() => setFlash(false), 620);
-    return () => clearTimeout(id);
-  }, [lastAt]);
-
-  const total = base != null ? base + sessionUsd : sessionUsd || null;
-  const count = baseCount != null ? baseCount + sessionCount : sessionCount;
+  const { session, live, lastAt } = useLiquidationFeed(markets);
+  const flash = useFlash(lastAt);
 
   return (
     <MetricCell
       label={
         <span className="flex items-center gap-2">
-          Liquidated — 24h
-          <span
-            aria-hidden="true"
-            className={cn(
-              "inline-block size-[4.5px] rounded-full",
-              live ? "bg-down" : "bg-ink-5",
-            )}
-          />
+          Liquidated · last full day
+          {baseDay && <span className="text-ink-4">{baseDay} UTC</span>}
         </span>
       }
-      value={
-        <span className={cn("rounded-[2px] px-1", flash && "tick-flash")}>
-          {usdCompact(total, 2)}
-        </span>
-      }
+      value={usdCompact(base, 2)}
       scale="hero"
       tone="down"
-      sub={
-        <span>
-          {count ? `${num(count)} events` : "—"}
-          {sessionCount > 0 && (
-            <span className="text-ink-4">
-              {" · "}
-              {num(sessionCount)} since you opened this page
-            </span>
+      sub={baseCount != null ? `${num(baseCount)} events` : undefined}
+    >
+      <div className="mt-3 flex items-center gap-2 border-t border-hair pt-2.5">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-block size-[4.5px] shrink-0 rounded-full",
+            live ? "bg-down" : "bg-ink-5",
           )}
+        />
+        <span
+          className={cn(
+            "figure rounded-[2px] px-1 text-[12px]",
+            session.count > 0 ? "text-down" : "text-ink-3",
+            flash && "tick-flash",
+          )}
+        >
+          {session.count > 0 ? `+${usd(session.usd)}` : live ? "$0" : "—"}
         </span>
-      }
-    />
+        <span className="figure text-[10.5px] text-ink-3">
+          {session.count > 0
+            ? `${num(session.count)} ${session.count === 1 ? "event" : "events"} since you opened this page`
+            : live
+              ? "since you opened this page"
+              : "connecting to the stream"}
+        </span>
+      </div>
+    </MetricCell>
   );
 }
 
 /**
- * The rail: a rolling tape plus what it adds up to.
+ * The rail: a rolling tape plus what the session adds up to.
  *
- * One feed drives both — the tape shows individual events, the panel beneath
- * turns them into the shape of the session.
+ * The tape opens with each market's recent history, so it is never blank;
+ * the session panel counts only what arrives live.
  */
 export function LiquidationTape({ markets }: { markets: Markets }) {
-  const { rows, sessionUsd, sessionCount, live } = useLiquidationFeed(markets);
+  const { rows, session, live, lastAt } = useLiquidationFeed(markets);
+  const flash = useFlash(lastAt);
 
-  const summary = useMemo(() => {
-    let longUsd = 0;
-    let shortUsd = 0;
-    let largest = rows[0] ?? null;
-    const byMarket = new Map<string, { usd: number; n: number }>();
-
-    for (const r of rows) {
-      if (r.side === "long") longUsd += r.usd;
-      else shortUsd += r.usd;
-      if (!largest || r.usd > largest.usd) largest = r;
-      const b = byMarket.get(r.symbol) ?? { usd: 0, n: 0 };
-      b.usd += r.usd;
-      b.n += 1;
-      byMarket.set(r.symbol, b);
-    }
-
-    const busiest = [...byMarket.entries()].sort((a, b) => b[1].n - a[1].n)[0];
-    return { longUsd, shortUsd, largest, busiest };
-  }, [rows]);
-
-  const sided = summary.longUsd + summary.shortUsd;
-  const longPct = sided > 0 ? (summary.longUsd / sided) * 100 : null;
+  const sided = session.longUsd + session.shortUsd;
+  const longPct = sided > 0 ? (session.longUsd / sided) * 100 : null;
 
   return (
     <>
@@ -120,15 +113,15 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
           />
           <div className="grow" />
           <Figure className="text-[10px] text-ink-3">
-            {live ? `${markets.length} markets` : "connecting…"}
+            {live ? `latest across ${markets.length} markets` : "connecting"}
           </Figure>
         </div>
 
         {rows.length === 0 ? (
           <p className="py-8 text-center text-[11.5px] text-ink-3">
             {live
-              ? "Watching. Nothing liquidated yet."
-              : "Connecting to the Lighter stream…"}
+              ? "Watching. Nothing liquidated recently."
+              : "Connecting to the Lighter stream."}
           </p>
         ) : (
           <div className="flex flex-col">
@@ -137,7 +130,7 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
                 key={r.id}
                 className={cn(
                   "grid grid-cols-[50px_58px_minmax(0,1fr)_42px] items-center border-t border-hair py-[6.5px]",
-                  i === 0 && "tick-flash",
+                  i === 0 && r.fresh && flash && "tick-flash",
                 )}
                 style={{
                   opacity: i > 8 ? Math.max(0.34, 1 - (i - 8) * 0.12) : 1,
@@ -152,11 +145,15 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
                   {r.side.toUpperCase()}
                 </Figure>
                 <span className="text-[11.5px] font-medium">{r.symbol}</span>
-                <Figure className="text-right text-[11.5px]">
-                  {usd(r.usd)}
-                </Figure>
-                <Figure className="text-right text-[9.5px] text-ink-4">
-                  {ago(r.t)}
+                <Figure className="text-right text-[11.5px]">{usd(r.usd)}</Figure>
+                <Figure
+                  className={cn(
+                    "text-right text-[9.5px]",
+                    r.fresh ? "text-ink-2" : "text-ink-4",
+                  )}
+                  title={new Date(r.t).toLocaleString()}
+                >
+                  <TimeAgo t={r.t} />
                 </Figure>
               </div>
             ))}
@@ -164,7 +161,7 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
         )}
       </div>
 
-      {/* ── what the tape adds up to ───────────────────────── */}
+      {/* ── what the session adds up to ────────────────────── */}
       <div className="border-t border-line p-5">
         <div className="mb-3.5 flex items-baseline">
           <Label>This session</Label>
@@ -174,29 +171,28 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
           </Figure>
         </div>
 
-        {sessionCount === 0 ? (
+        {session.count === 0 ? (
           <p className="text-[11.5px] leading-relaxed text-ink-3">
-            Nothing forced out yet. Every liquidation on the{" "}
-            {markets.length} deepest books lands here the moment it clears —
-            side, market and size — and the 24h figure above moves with it.
+            Nothing forced out yet. Every liquidation on the {markets.length}{" "}
+            deepest books lands here the moment it clears — side, market and
+            size, split between longs and shorts.
           </p>
         ) : (
           <>
             <div className="mb-1.5 flex items-baseline justify-between">
               <Figure className="text-[19px] font-medium tracking-[-0.02em] text-down">
-                {usd(sessionUsd)}
+                {usd(session.usd)}
               </Figure>
               <Figure className="text-[11px] text-ink-3">
-                {num(sessionCount)}{" "}
-                {sessionCount === 1 ? "event" : "events"}
+                {num(session.count)} {session.count === 1 ? "event" : "events"}
               </Figure>
             </div>
 
             {longPct != null && (
               <>
                 <SplitBar
-                  left={summary.longUsd}
-                  right={summary.shortUsd}
+                  left={session.longUsd}
+                  right={session.shortUsd}
                   className="mb-2"
                 />
                 <div className="mb-4 flex justify-between">
@@ -210,16 +206,16 @@ export function LiquidationTape({ markets }: { markets: Markets }) {
               </>
             )}
 
-            {summary.largest && (
+            {session.largest && (
               <Row
                 label="Largest hit"
-                value={`${summary.largest.symbol} ${usd(summary.largest.usd)}`}
+                value={`${session.largest.symbol} ${usd(session.largest.usd)}`}
               />
             )}
-            {summary.busiest && (
+            {session.busiest && (
               <Row
                 label="Most active"
-                value={`${summary.busiest[0]} · ${summary.busiest[1].n}`}
+                value={`${session.busiest.symbol} · ${session.busiest.count}`}
               />
             )}
             <Row label="Books watched" value={String(markets.length)} />
