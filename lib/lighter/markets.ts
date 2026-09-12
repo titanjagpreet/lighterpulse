@@ -100,6 +100,25 @@ async function fetchFunding(): Promise<FundingRate[]> {
 
 export const getFundingRates = () => cached("funding", 30, fetchFunding);
 
+/**
+ * Market id → symbol for perps AND spot. Account history refers to markets by
+ * id only, and spot books (LIT/USDC is 2049) are absent from `getMarkets`.
+ */
+async function fetchMarketNames(): Promise<Record<number, string>> {
+  const res = await api<{
+    order_book_details?: { market_id: number; symbol: string }[];
+    spot_order_book_details?: { market_id: number; symbol: string }[];
+  }>("orderBookDetails");
+  const out: Record<number, string> = {};
+  for (const m of [...(res.order_book_details ?? []), ...(res.spot_order_book_details ?? [])]) {
+    out[m.market_id] = m.symbol;
+  }
+  return out;
+}
+
+export const getMarketNames = () =>
+  cached("markets:names", 60 * 60, fetchMarketNames);
+
 /* ── composed ────────────────────────────────────────────────── */
 
 export async function getMarkets(): Promise<Cached<Market[]>> {

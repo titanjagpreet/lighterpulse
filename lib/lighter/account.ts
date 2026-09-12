@@ -40,8 +40,22 @@ export interface Position {
 
 export interface AssetBalance {
   symbol: string;
+  /** Spot balance, including anything locked in open orders. */
   balance: number;
   locked: number;
+  /** The part of this asset posted as perps margin. */
+  marginBalance: number;
+}
+
+/** A holding in a pool — the LLP, a public vault, or LIT staking. */
+export interface PoolShare {
+  poolIndex: number;
+  shares: number;
+  /** What went in, in the pool's own asset: LIT for staking, USDC otherwise. */
+  principal: number;
+  entryUsdc: number;
+  /** Epoch ms; null when the API reports none. */
+  entryAt: number | null;
 }
 
 export interface Account {
@@ -59,6 +73,7 @@ export interface Account {
   marginUsage: number | null;
   positions: Position[];
   assets: AssetBalance[];
+  shares: PoolShare[];
   totalUnrealizedPnl: number;
   totalFundingPaid: number;
   totalNotional: number;
@@ -80,7 +95,7 @@ interface RawPosition {
   allocated_margin?: string;
 }
 
-interface RawAccount {
+export interface RawAccount {
   account_index: number;
   l1_address: string;
   status: number;
@@ -92,7 +107,19 @@ interface RawAccount {
   cross_maintenance_margin_requirement?: string | number;
   cross_initial_margin_requirement?: string | number;
   positions?: RawPosition[];
-  assets?: { symbol: string; balance: string; locked_balance: string }[];
+  assets?: {
+    symbol: string;
+    balance: string;
+    locked_balance: string;
+    margin_balance?: string;
+  }[];
+  shares?: {
+    public_pool_index: number;
+    shares_amount: number | string;
+    entry_usdc?: string;
+    principal_amount?: string;
+    entry_timestamp?: number;
+  }[];
 }
 
 function normalisePosition(p: RawPosition): Position {
@@ -142,7 +169,7 @@ function normalisePosition(p: RawPosition): Position {
   };
 }
 
-function normalise(a: RawAccount): Account {
+export function normaliseAccount(a: RawAccount): Account {
   const positions = (a.positions ?? [])
     .filter((p) => Math.abs(n(p.position)) > 0)
     .map(normalisePosition)
@@ -169,8 +196,18 @@ function normalise(a: RawAccount): Account {
         symbol: x.symbol,
         balance: n(x.balance),
         locked: n(x.locked_balance),
+        marginBalance: n(x.margin_balance),
       }))
-      .filter((x) => x.balance !== 0 || x.locked !== 0),
+      .filter((x) => x.balance !== 0 || x.locked !== 0 || x.marginBalance !== 0),
+    shares: (a.shares ?? [])
+      .map((s) => ({
+        poolIndex: n(s.public_pool_index),
+        shares: n(s.shares_amount),
+        principal: n(s.principal_amount),
+        entryUsdc: n(s.entry_usdc),
+        entryAt: s.entry_timestamp ? n(s.entry_timestamp) * 1000 : null,
+      }))
+      .filter((s) => s.shares > 0),
     totalUnrealizedPnl: positions.reduce((s, p) => s + p.unrealizedPnl, 0),
     totalFundingPaid: positions.reduce((s, p) => s + p.fundingPaid, 0),
     totalNotional: positions.reduce((s, p) => s + p.valueUsd, 0),
@@ -207,7 +244,7 @@ export async function fetchAccount(query: string): Promise<Account> {
 
   const raw = res?.accounts?.[0];
   if (!raw) throw new AccountNotFound(query);
-  return normalise(raw);
+  return normaliseAccount(raw);
 }
 
 export interface SubAccount {
