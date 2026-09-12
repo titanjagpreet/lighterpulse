@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s · LighterPulse",
   },
   description:
-    "Live market data, liquidation maps, trader leaderboards and a full block explorer for Lighter. Open interest, funding, positions and PnL across every market.",
+    "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter — open interest, buybacks and live positions across every market.",
   keywords: [
     "lighter",
     "lighter.xyz",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     "perp dex analytics",
     "open interest",
     "funding rates",
-    "liquidation map",
+    "liquidations",
     "trader leaderboard",
     "block explorer",
     "LIT token",
@@ -40,7 +40,6 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "LighterPulse" }],
   creator: "LighterPulse",
-  icons: { icon: "/favicon.ico", apple: "/logo.png" },
   robots: {
     index: true,
     follow: true,
@@ -59,8 +58,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     title: "LighterPulse — the Lighter terminal",
     description:
-      "Live market data, liquidation maps, trader leaderboards and a full block explorer for Lighter.",
-    images: [{ url: "/logo.png", width: 1200, height: 630, alt: "LighterPulse" }],
+      "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter.",
   },
   twitter: {
     card: "summary_large_image",
@@ -68,10 +66,8 @@ export const metadata: Metadata = {
     creator: "@singhxbt",
     title: "LighterPulse — the Lighter terminal",
     description:
-      "Live market data, liquidation maps, trader leaderboards and a full block explorer for Lighter.",
-    images: ["/logo.png"],
+      "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter.",
   },
-  alternates: { canonical: "https://lighterpulse.xyz" },
   category: "Finance",
 };
 
