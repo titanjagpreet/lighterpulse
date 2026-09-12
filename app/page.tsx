@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Wordmark } from "@/components/terminal/mark";
 import { CommandSearch } from "@/components/terminal/command-search";
 import { LiveHeight } from "@/components/terminal/live-height";
@@ -7,6 +8,7 @@ import {
   MarketFieldLegend,
 } from "@/components/terminal/market-field";
 import { SeriesChart } from "@/components/terminal/charts";
+import { lighterApp, LIGHTER_DOCS, REFERRAL_REL } from "@/lib/links";
 import {
   Delta,
   Figure,
@@ -30,8 +32,13 @@ import {
 
 export const revalidate = 15;
 
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
 const NAV = [
   { href: "/markets", label: "Markets" },
+  { href: "/funding", label: "Funding" },
   { href: "/liquidations", label: "Liquidations" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/explorer", label: "Explorer" },
@@ -91,8 +98,8 @@ export default async function LandingPage() {
             </h1>
 
             <p className="mb-10 max-w-[54ch] text-[16.5px] leading-[1.6] text-ink-2">
-              Live market data, liquidation maps, trader leaderboards and a full
-              block explorer for Lighter — in one terminal.
+              Live market data, liquidations, funding across venues, trader
+              leaderboards and a full block explorer for Lighter — in one terminal.
             </p>
 
             <div className="mb-7 flex flex-wrap items-stretch gap-2.5">
@@ -161,6 +168,8 @@ export default async function LandingPage() {
         copy="Equities, indices, metals and FX now trade beside perps. Open interest, mark against index, day range, funding and max leverage on every one."
         cta={{ href: "/markets", label: "Open markets" }}
       >
+        <div className="overflow-x-auto">
+        <div className="min-w-[520px]">
         <div className="label grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-edge pb-2.5">
           <span>Market</span>
           <span className="text-right">Mark</span>
@@ -171,9 +180,10 @@ export default async function LandingPage() {
         {topMarkets.map((m) => {
           const tag = ASSET_CLASS_TAG[m.assetClass];
           return (
-            <div
+            <Link
               key={m.marketId}
-              className="grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-hair py-3 last:border-0"
+              href={`/markets/${m.symbol}`}
+              className="row-hit grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-hair py-3 last:border-0"
             >
               <span className="flex items-baseline gap-2">
                 <span className="text-[13px] font-semibold">{m.symbol}</span>
@@ -213,9 +223,11 @@ export default async function LandingPage() {
                   tone="up"
                 />
               </span>
-            </div>
+            </Link>
           );
         })}
+        </div>
+        </div>
       </Section>
 
       {/* ── 02 liquidations ────────────────────────────────── */}
@@ -223,7 +235,7 @@ export default async function LandingPage() {
         n="02"
         eyebrow="Liquidations"
         title="See the wall before you hit it."
-        copy="Liquidation volume mapped by price level, cascades detected as they unfold, and a live tape of every forced exit on the exchange."
+        copy="Daily liquidation volume back to genesis, and a live tape of every forced exit on the exchange as it clears."
         cta={{ href: "/liquidations", label: "Open liquidations" }}
       >
         <div className="mb-4 flex items-baseline gap-3">
@@ -233,7 +245,7 @@ export default async function LandingPage() {
           <Figure className="text-[15px] font-medium text-down">
             {usdCompact(o.liquidations24h, 2)}
           </Figure>
-          <span className="figure text-[10.5px] text-ink-3">today</span>
+          <span className="figure text-[10.5px] text-ink-3">last full day</span>
         </div>
         {liq.length > 1 ? (
           <SeriesChart
@@ -265,6 +277,8 @@ export default async function LandingPage() {
         copy="PnL, return and volume over 24 hours, a week, a month or all time. Every row opens the full book behind it."
         cta={{ href: "/leaderboard", label: "Open leaderboard" }}
       >
+        <div className="overflow-x-auto">
+        <div className="min-w-[520px]">
         <div className="label grid grid-cols-[36px_minmax(0,1fr)_116px_116px_78px] items-center border-b border-edge pb-2.5">
           <span>#</span>
           <span>Account</span>
@@ -297,6 +311,8 @@ export default async function LandingPage() {
             />
           </Link>
         ))}
+        </div>
+        </div>
       </Section>
 
       {/* ── 04 your book ───────────────────────────────────── */}
@@ -304,7 +320,7 @@ export default async function LandingPage() {
         n="04"
         eyebrow="Your book"
         title="Paste an address. Watch it move."
-        copy="Positions, equity curve, funding cost and distance to liquidation — streaming live over WebSocket. No wallet connection, no signature, no account."
+        copy="Positions, funding cost and distance to liquidation — repriced live over WebSocket. No wallet connection, no signature, no account."
       >
         <div className="flex flex-col gap-5">
           <CommandSearch
@@ -367,14 +383,18 @@ export default async function LandingPage() {
           <span className="figure text-[11px] text-ink-4">
             Built on the public Lighter API. Not affiliated with Lighter.
           </span>
+          <span className="figure text-[11px] text-ink-4">
+            Links that open Lighter&rsquo;s app carry a referral code.
+          </span>
         </div>
         <div className="grow" />
-        <div className="flex gap-14">
+        <div className="flex flex-wrap gap-x-14 gap-y-8">
           <FooterCol
             title="Terminal"
             links={[
               ["/overview", "Overview"],
               ["/markets", "Markets"],
+              ["/funding", "Funding"],
               ["/liquidations", "Liquidations"],
             ]}
           />
@@ -383,9 +403,37 @@ export default async function LandingPage() {
             links={[
               ["/leaderboard", "Leaderboard"],
               ["/lit", "LIT"],
+              ["/llp", "LLP & vaults"],
               ["/explorer", "Explorer"],
             ]}
           />
+          <div className="flex flex-col gap-2.5">
+            <Label className="mb-0.5">Lighter</Label>
+            <a
+              href={lighterApp()}
+              target="_blank"
+              rel={REFERRAL_REL}
+              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
+            >
+              Open Lighter ↗
+            </a>
+            <a
+              href={LIGHTER_DOCS.home}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
+            >
+              Docs ↗
+            </a>
+            <a
+              href={LIGHTER_DOCS.api}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
+            >
+              API docs ↗
+            </a>
+          </div>
         </div>
       </footer>
     </div>
@@ -476,7 +524,7 @@ function Section({
         {cta && (
           <Link
             href={cta.href}
-            className="figure ctl inline-block border-b border-edge pb-1 text-[12px] text-ink-2 hover:border-ink-3 hover:text-ink"
+            className="figure ctl -mt-1.5 inline-block border-b border-edge pt-1.5 pb-1 text-[12px] text-ink-2 hover:border-ink-3 hover:text-ink"
           >
             {cta.label} →
           </Link>
@@ -501,7 +549,7 @@ function FooterCol({
         <Link
           key={href}
           href={href}
-          className="ctl text-[12px] text-ink-2 hover:text-ink"
+          className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
         >
           {label}
         </Link>
