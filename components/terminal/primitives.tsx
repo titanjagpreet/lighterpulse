@@ -250,7 +250,11 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const pad = size === "md" ? "px-3 py-1.5 text-[11.5px]" : "px-2.5 py-[3px] text-[10px]";
+  // Touch screens get a full-size target; a mouse keeps the dense terminal row.
+  const pad =
+    size === "md"
+      ? "px-3 py-1.5 text-[11.5px] pointer-coarse:py-2.5"
+      : "px-2.5 py-[3px] text-[10px] pointer-coarse:px-3 pointer-coarse:py-2";
   return (
     <div className={cn("flex gap-0.5", className)}>
       {options.map((o) => {
@@ -386,32 +390,104 @@ export function SplitBar({
   );
 }
 
-/** Freshness stamp. Every panel can say how old its data is. */
-export function AsOf({
-  age,
-  stale,
+export const SEGMENT_FILL = {
+  up: "bg-up",
+  down: "bg-down",
+  warn: "bg-warn",
+  info: "bg-info",
+  brand: "bg-brand",
+  neutral: "bg-ink-3",
+  faint: "bg-edge",
+} as const;
+
+export type SegmentTone = keyof typeof SEGMENT_FILL;
+
+/**
+ * Parts of a whole on one rail. A legend always sits beside it, so identity
+ * never rests on colour alone.
+ */
+export function ProportionBar({
+  segments,
+  height = 8,
+  legend = true,
   className,
 }: {
-  age: number;
-  stale?: boolean;
+  segments: { key: string; label: string; value: number; tone: SegmentTone; note?: string }[];
+  height?: number;
+  legend?: boolean;
   className?: string;
 }) {
-  const text =
-    age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : `${Math.floor(age / 3600)}h ago`;
+  const parts = segments.filter((s) => s.value > 0);
+  const total = parts.reduce((sum, s) => sum + s.value, 0) || 1;
   return (
-    <span
-      className={cn(
-        "figure text-[10px]",
-        stale ? "text-warn" : "text-ink-4",
-        className,
+    <div className={className}>
+      <div className="flex gap-[2px]" style={{ height }} aria-hidden="true">
+        {parts.map((s, i) => (
+          <div
+            key={s.key}
+            className={cn(
+              SEGMENT_FILL[s.tone],
+              i === 0 && "rounded-l-[2px]",
+              i === parts.length - 1 && "rounded-r-[2px]",
+            )}
+            style={{ width: `${(s.value / total) * 100}%`, minWidth: 2 }}
+          />
+        ))}
+      </div>
+      {legend && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+          {segments.map((s) => (
+            <span key={s.key} className="flex items-center gap-1.5">
+              <span
+                className={cn("size-[7px] shrink-0 rounded-[2px]", SEGMENT_FILL[s.tone])}
+                aria-hidden="true"
+              />
+              <span className="text-[11px] text-ink-2">{s.label}</span>
+              <span className="figure text-[10.5px] text-ink-3">
+                {s.note ?? `${((s.value / total) * 100).toFixed(1)}%`}
+              </span>
+            </span>
+          ))}
+        </div>
       )}
-      title={stale ? "Upstream is unreachable — showing the last known good data" : undefined}
-    >
-      {stale ? "stale · " : ""}
-      {text}
-    </span>
+    </div>
   );
 }
+
+/** A link out to the source that proves a figure. */
+export function ProofLink({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "figure ctl inline-flex items-center gap-1 text-[10.5px] text-ink-3 underline decoration-edge underline-offset-4 hover:text-ink",
+        className,
+      )}
+    >
+      {children}
+      <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M4 2h6v6M10 2 3 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      <span className="sr-only">(opens in a new tab)</span>
+    </a>
+  );
+}
+
+/**
+ * Freshness stamp. Lives in a client component because an age rendered into
+ * cached HTML goes stale while the page sits on a CDN.
+ */
+export { AsOf } from "./as-of";
 
 /** Empty state. Quiet, never a shrug. */
 export function Empty({

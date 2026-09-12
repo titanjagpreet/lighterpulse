@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { num, usdCompact } from "@/lib/format";
+import { dateTick, dayLabel, num, ratePct, usdCompact } from "@/lib/format";
 import type { MetricPoint } from "@/lib/lighter/types";
 
 /* ══════════════════════════════════════════════════════════════
@@ -29,20 +29,34 @@ import type { MetricPoint } from "@/lib/lighter/types";
  */
 export type ChartFormat =
   | { as: "usdCompact"; dp?: number }
+  | { as: "usdSigned"; dp?: number }
   | { as: "usdPrice"; dp?: number }
   | { as: "count" }
-  | { as: "thousands"; suffix?: string };
+  | { as: "compact" }
+  | { as: "thousands"; suffix?: string }
+  | { as: "ratePct"; dp?: number };
 
-function fmt(v: number, f: ChartFormat): string {
+export function fmt(v: number, f: ChartFormat): string {
   switch (f.as) {
     case "usdCompact":
       return usdCompact(v, f.dp ?? 2);
+    case "usdSigned":
+      if (v === 0) return "$0";
+      return `${v > 0 ? "+" : "−"}${usdCompact(Math.abs(v), f.dp ?? 1)}`;
     case "usdPrice":
       return `$${v.toFixed(f.dp ?? 2)}`;
     case "count":
       return num(Math.round(v));
+    case "compact": {
+      const a = Math.abs(v);
+      if (a >= 1e6) return `${(v / 1e6).toFixed(a >= 1e7 ? 1 : 2)}M`;
+      if (a >= 1e3) return `${(v / 1e3).toFixed(a >= 1e4 ? 0 : 1)}K`;
+      return num(Math.round(v));
+    }
     case "thousands":
       return `${(v / 1000).toFixed(0)}${f.suffix ?? "K"}`;
+    case "ratePct":
+      return ratePct(v, f.dp ?? 4);
   }
 }
 
@@ -55,15 +69,30 @@ interface Scale {
 function makeScale(
   values: number[],
   height: number,
-  zeroBased: boolean,
+  baseline: "zero" | "fit" | "diverging",
   pad = 0.08,
 ): Scale {
   const lo = Math.min(...values);
   const hi = Math.max(...values);
-  let min = zeroBased ? 0 : lo - (hi - lo) * pad;
-  let max = hi + (hi - lo) * pad;
+  let min: number;
+  let max: number;
+  if (baseline === "diverging") {
+    const span = Math.max(Math.abs(Math.min(0, lo)), Math.max(0, hi)) || 1;
+    min = Math.min(0, lo) - span * pad;
+    max = Math.max(0, hi) + span * pad;
+  } else {
+    // Padding must not invent negative values for a series that has none —
+    // a count axis reading "−348" is wrong, not merely untidy.
+    min =
+      baseline === "zero"
+        ? 0
+        : lo >= 0
+          ? Math.max(0, lo - (hi - lo) * pad)
+          : lo - (hi - lo) * pad;
+    max = hi + (hi - lo) * pad;
+  }
   if (min === max) {
-    min = zeroBased ? 0 : min * 0.95;
+    min = baseline === "zero" ? 0 : min * 0.95;
     max = max * 1.05 || 1;
   }
   return {
@@ -92,7 +121,7 @@ export function Sparkline({
       <span className={cn("inline-block", className)} style={{ width, height }} />
     );
   }
-  const s = makeScale(points, height - 3, false, 0.12);
+  const s = makeScale(points, height - 3, "fit", 0.12);
   const step = width / (points.length - 1);
   const d = points
     .map(
@@ -125,11 +154,23 @@ export function Sparkline({
   );
 }
 
+/** A secondary figure shown in the tooltip beside the plotted value. */
+export interface ChartDetail {
+  label: string;
+  /** Aligned index-for-index with `points`. */
+  values: number[];
+  format?: ChartFormat;
+  tone?: "up" | "down";
+}
+
 interface SeriesProps {
   points: MetricPoint[];
   height?: number;
-  /** Bars for flow (volume); area for a level (open interest). */
-  variant?: "bar" | "area";
+  /**
+   * Bars for a flow (volume), area for a level (open interest), diverging
+   * bars for a signed flow (net deposits) — positive up, negative down.
+   */
+  variant?: "bar" | "area" | "diverging";
   /** Volume starts at zero. A level series may not — and then says so. */
   zeroBased?: boolean;
   tone?: "brand" | "info";
@@ -137,15 +178,30 @@ interface SeriesProps {
   showMean?: boolean;
   /** How to render axis ticks and the tooltip value. */
   format: ChartFormat;
-  /** x-axis labels, evenly spaced. Also the tooltip's heading. */
+  /** Optional per-point labels; the tooltip heading. Dates are derived otherwise. */
   xLabels?: string[];
+  /** Shorter per-point text for axis ticks, when headings are too long to repeat. */
+  tickLabels?: string[];
   /** What the value represents, shown under the tooltip figure. */
   valueLabel?: string;
+  /** Extra rows for the tooltip. */
+  details?: ChartDetail[];
   className?: string;
 }
 
-const AXIS_W = 52;
+const AXIS_MIN = 52;
 const X_LABEL_H = 22;
+const MAX_TICKS = 6;
+
+/** Evenly spaced indices for x-axis labels — every point when there are few. */
+function tickIndices(n: number): number[] {
+  if (n <= MAX_TICKS + 2) return Array.from({ length: n }, (_, i) => i);
+  const out: number[] = [];
+  for (let k = 0; k < MAX_TICKS; k++) {
+    out.push(Math.round((k * (n - 1)) / (MAX_TICKS - 1)));
+  }
+  return out;
+}
 
 export function SeriesChart({
   points,
@@ -156,31 +212,37 @@ export function SeriesChart({
   showMean = false,
   format,
   xLabels,
+  tickLabels,
   valueLabel,
+  details,
   className,
 }: SeriesProps) {
   const plotRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
+  // Two charts with the same tone and variant used to share a gradient id —
+  // invalid HTML, and the second chart's fill could resolve to the first's.
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const barLike = variant !== "area";
 
   const onMove = useCallback(
     (clientX: number) => {
       const el = plotRef.current;
       if (!el || points.length === 0) return;
       const rect = el.getBoundingClientRect();
-      const inner = rect.width - AXIS_W;
+      const axis = Number(el.dataset.axis) || AXIS_MIN;
+      const inner = rect.width - axis;
       if (inner <= 0) return;
-      const frac = (clientX - rect.left - AXIS_W) / inner;
+      const frac = (clientX - rect.left - axis) / inner;
       if (frac < -0.02 || frac > 1.02) {
         setHover(null);
         return;
       }
-      const i =
-        variant === "bar"
-          ? Math.floor(frac * points.length)
-          : Math.round(frac * (points.length - 1));
+      const i = barLike
+        ? Math.floor(frac * points.length)
+        : Math.round(frac * (points.length - 1));
       setHover(Math.max(0, Math.min(points.length - 1, i)));
     },
-    [points.length, variant],
+    [points.length, barLike],
   );
 
   if (points.length < 2) {
@@ -197,28 +259,45 @@ export function SeriesChart({
     );
   }
 
+  const n = points.length;
   const plotH = height - X_LABEL_H;
   const VB = 1000; // plot viewBox width; stretches to the container
   const values = points.map((p) => p.v);
-  const s = makeScale(values, plotH, zeroBased);
+  const s = makeScale(
+    values,
+    plotH,
+    variant === "diverging" ? "diverging" : zeroBased ? "zero" : "fit",
+  );
 
   const stroke = tone === "brand" ? "var(--color-brand)" : "var(--color-info)";
-  const fillId = `grad-${tone}-${variant}`;
+  const fillId = `grad-${tone}-${uid}`;
 
-  const ticks = [0, 1, 2, 3].map((i) => s.min + ((s.max - s.min) * (3 - i)) / 3);
+  const ticks =
+    variant === "diverging" && s.min < 0 && s.max > 0
+      ? [s.max, 0, s.min]
+      : [0, 1, 2, 3].map((i) => s.min + ((s.max - s.min) * (3 - i)) / 3);
+  // The axis is as wide as its longest label — rate labels such as
+  // "+0.0104%" would otherwise run into the plot.
+  const axisW = Math.max(
+    AXIS_MIN,
+    Math.ceil(Math.max(...ticks.map((t) => fmt(t, format).length)) * 5.9) + 12,
+  );
+  const baselineTick = variant === "diverging" ? 0 : ticks[ticks.length - 1];
 
   const maxIdx = values.indexOf(Math.max(...values));
   const minIdx = values.indexOf(Math.min(...values));
-  const meanV = values.reduce((a, b) => a + b, 0) / values.length;
+  const meanV = values.reduce((a, b) => a + b, 0) / n;
+
+  const spanMs = points[n - 1].t - points[0].t;
+  const longSpan = spanMs > 300 * 86_400_000;
 
   // Horizontal placement as a fraction of the plot, so HTML overlays land in
   // the same place the stretched SVG puts their marks.
-  const barSlot = 1 / points.length;
-  const centreFrac = (i: number) =>
-    variant === "bar" ? (i + 0.5) * barSlot : i / (points.length - 1);
-
-  const step = VB / (variant === "bar" ? points.length : points.length - 1);
+  const centreFrac = (i: number) => (barLike ? (i + 0.5) / n : i / (n - 1));
+  const step = VB / (barLike ? n : n - 1);
   const x = (i: number) => i * step;
+  // Dense histories close the gaps between bars, or they dissolve into lines.
+  const barW = step * (n > 120 ? 0.94 : n > 45 ? 0.8 : 0.64);
 
   const areaPath =
     variant === "area"
@@ -232,21 +311,22 @@ export function SeriesChart({
 
   /** Anchor an overlay at a fraction of the plot's inner width. */
   const atFrac = (f: number) =>
-    `calc(${AXIS_W}px + (100% - ${AXIS_W}px) * ${f})`;
+    `calc(${axisW}px + (100% - ${axisW}px) * ${f})`;
 
   const hoverPoint = hover != null ? points[hover] : null;
   const hoverFrac = hover != null ? centreFrac(hover) : 0;
-  const dateLabel = (p: MetricPoint, i: number) =>
-    xLabels?.[i] ??
-    new Date(p.t).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
+  const heading = (i: number) => xLabels?.[i] ?? dayLabel(points[i].t, longSpan);
+  const tickText = (i: number) =>
+    tickLabels?.[i] ?? xLabels?.[i] ?? dateTick(points[i].t, spanMs);
+  const xTicks = tickIndices(n);
+
+  const zeroY = s.y(0);
 
   return (
     <div className={className}>
       <div
         ref={plotRef}
+        data-axis={axisW}
         className="relative"
         style={{ height: plotH }}
         onMouseMove={(e) => onMove(e.clientX)}
@@ -262,9 +342,9 @@ export function SeriesChart({
             aria-hidden="true"
             className={cn(
               "absolute right-0 h-px",
-              i === 3 ? "bg-edge" : "bg-hair",
+              t === baselineTick ? "bg-edge" : "bg-hair",
             )}
-            style={{ left: AXIS_W, top: s.y(t) }}
+            style={{ left: axisW, top: s.y(t) }}
           />
         ))}
 
@@ -275,7 +355,7 @@ export function SeriesChart({
             className="figure absolute text-[9.5px] text-ink-4"
             style={{
               left: 0,
-              width: AXIS_W - 10,
+              width: axisW - 10,
               top: s.y(t),
               transform: "translateY(-50%)",
               textAlign: "right",
@@ -290,7 +370,7 @@ export function SeriesChart({
             aria-hidden="true"
             className="absolute right-0 h-px"
             style={{
-              left: AXIS_W,
+              left: axisW,
               top: s.y(meanV),
               backgroundImage:
                 "repeating-linear-gradient(to right, var(--color-ink-3) 0 3px, transparent 3px 6px)",
@@ -303,8 +383,9 @@ export function SeriesChart({
           viewBox={`0 0 ${VB} ${plotH}`}
           preserveAspectRatio="none"
           className="absolute top-0 h-full"
-          style={{ left: AXIS_W, width: `calc(100% - ${AXIS_W}px)` }}
+          style={{ left: axisW, width: `calc(100% - ${axisW}px)` }}
           role="img"
+          aria-label={valueLabel}
         >
           <defs>
             <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
@@ -313,11 +394,10 @@ export function SeriesChart({
             </linearGradient>
           </defs>
 
-          {variant === "bar" ? (
+          {variant === "bar" &&
             points.map((p, i) => {
-              const barW = step * 0.64;
               const y = s.y(p.v);
-              const emphasis = i === points.length - 1 || i === maxIdx;
+              const emphasis = i === n - 1 || i === maxIdx;
               const active = hover === i;
               return (
                 <rect
@@ -330,8 +410,35 @@ export function SeriesChart({
                   opacity={hover != null && !active ? 0.55 : 1}
                 />
               );
-            })
-          ) : (
+            })}
+
+          {variant === "diverging" &&
+            points.map((p, i) => {
+              const y = s.y(p.v);
+              const up = p.v >= 0;
+              const active = hover === i;
+              return (
+                <rect
+                  key={i}
+                  x={x(i) + (step - barW) / 2}
+                  y={up ? y : zeroY}
+                  width={barW}
+                  height={Math.max(1, Math.abs(zeroY - y))}
+                  fill={
+                    up
+                      ? active
+                        ? "var(--color-up)"
+                        : "var(--color-up-dim)"
+                      : active
+                        ? "var(--color-down)"
+                        : "var(--color-down-dim)"
+                  }
+                  opacity={hover != null && !active ? 0.55 : 1}
+                />
+              );
+            })}
+
+          {variant === "area" && (
             <>
               <path
                 d={`${areaPath} L${VB},${plotH} L0,${plotH} Z`}
@@ -365,8 +472,8 @@ export function SeriesChart({
             aria-hidden="true"
             className="pointer-events-none absolute size-[7px] rounded-full ring-2 ring-surface"
             style={{
-              left: `calc(${atFrac(centreFrac(points.length - 1))} - 3.5px)`,
-              top: s.y(values[values.length - 1]) - 3.5,
+              left: `calc(${atFrac(centreFrac(n - 1))} - 3.5px)`,
+              top: s.y(values[n - 1]) - 3.5,
               background: stroke,
             }}
           />
@@ -386,19 +493,26 @@ export function SeriesChart({
         )}
 
         {/* annotate the extremes — hidden while hovering, to avoid collisions */}
-        {variant === "bar" && hover == null && (
+        {/* dense diverging series: extremes are visible, labels only collide */}
+        {barLike && hover == null && !(variant === "diverging" && n > 45) && (
           <>
             <Annotation
+              axis={axisW}
               frac={centreFrac(maxIdx)}
               top={s.y(values[maxIdx]) - 15}
               className="text-ink"
             >
               {fmt(values[maxIdx], format)}
             </Annotation>
-            {minIdx !== maxIdx && (
+            {minIdx !== maxIdx && (variant === "bar" || values[minIdx] < 0) && (
               <Annotation
+              axis={axisW}
                 frac={centreFrac(minIdx)}
-                top={s.y(values[minIdx]) - 15}
+                top={
+                  variant === "diverging"
+                    ? s.y(values[minIdx]) + 3
+                    : s.y(values[minIdx]) - 15
+                }
                 className="text-ink-3"
               >
                 {fmt(values[minIdx], format)}
@@ -411,10 +525,10 @@ export function SeriesChart({
         {hoverPoint && hover != null && (
           <div
             role="status"
-            className="pointer-events-none absolute z-10 rounded-[4px] border border-edge bg-raised px-2.5 py-1.5 shadow-lg"
+            className="pointer-events-none absolute z-10 rounded-[4px] border border-edge bg-raised px-2.5 py-1.5 whitespace-nowrap shadow-lg"
             style={{
               left: atFrac(hoverFrac),
-              top: Math.max(2, s.y(hoverPoint.v) - 52),
+              top: Math.max(2, Math.min(plotH - 40, s.y(hoverPoint.v) - 52)),
               transform:
                 hoverFrac < 0.16
                   ? "translateX(-4px)"
@@ -424,43 +538,94 @@ export function SeriesChart({
             }}
           >
             <div className="figure text-[9.5px] tracking-[0.06em] text-ink-3 uppercase">
-              {dateLabel(hoverPoint, hover)}
+              {heading(hover)}
             </div>
-            <div className="figure text-[13px] font-medium text-ink">
+            <div
+              className={cn(
+                "figure text-[13px] font-medium",
+                variant === "diverging"
+                  ? hoverPoint.v >= 0
+                    ? "text-up"
+                    : "text-down"
+                  : "text-ink",
+              )}
+            >
               {fmt(hoverPoint.v, format)}
             </div>
             {valueLabel && (
               <div className="figure text-[9.5px] text-ink-4">{valueLabel}</div>
             )}
+            {details && details.length > 0 && (
+              <div className="mt-1 flex flex-col gap-0.5 border-t border-hair pt-1">
+                {details.map((d) => (
+                  <div key={d.label} className="flex justify-between gap-4">
+                    <span className="figure text-[9.5px] text-ink-3">
+                      {d.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "figure text-[10.5px]",
+                        d.tone === "up"
+                          ? "text-up"
+                          : d.tone === "down"
+                            ? "text-down"
+                            : "text-ink-2",
+                      )}
+                    >
+                      {d.values[hover] != null
+                        ? fmt(d.values[hover], d.format ?? format)
+                        : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {xLabels && xLabels.length > 0 && (
-        <div
-          className="figure flex justify-between text-[9.5px]"
-          style={{ paddingLeft: AXIS_W, height: X_LABEL_H, paddingTop: 8 }}
-        >
-          {xLabels.map((l, i) => (
+      {/* x-axis — thinned to a handful of dates, placed where their marks sit */}
+      <div
+        className="figure relative text-[9.5px]"
+        style={{ height: X_LABEL_H }}
+        aria-hidden="true"
+      >
+        {xTicks.map((i, k) => {
+          const edge = k === 0 ? "first" : k === xTicks.length - 1 ? "last" : null;
+          // A line's first and last points sit on the plot edges, so their
+          // labels align inward; a bar's sit half a slot in and can centre.
+          const transform =
+            !barLike && edge === "first"
+              ? "none"
+              : !barLike && edge === "last"
+                ? "translateX(-100%)"
+                : "translateX(-50%)";
+          return (
             <span
               key={i}
-              className={hover === i ? "text-ink" : "text-ink-4"}
+              className={cn(
+                "absolute top-2 whitespace-nowrap",
+                hover === i ? "text-ink" : "text-ink-4",
+              )}
+              style={{ left: atFrac(centreFrac(i)), transform }}
             >
-              {l}
+              {tickText(i)}
             </span>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function Annotation({
+  axis,
   frac,
   top,
   children,
   className,
 }: {
+  axis: number;
   frac: number;
   top: number;
   children: React.ReactNode;
@@ -473,7 +638,7 @@ function Annotation({
         className,
       )}
       style={{
-        left: `calc(${AXIS_W}px + (100% - ${AXIS_W}px) * ${frac})`,
+        left: `calc(${axis}px + (100% - ${axis}px) * ${frac})`,
         top,
       }}
     >
