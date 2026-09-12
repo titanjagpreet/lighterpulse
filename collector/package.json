@@ -1,0 +1,15 @@
+{
+  "name": "lighterpulse-collector",
+  "private": true,
+  "type": "module",
+  "description": "Records per-market open interest every 15 minutes. Lighter publishes no history, so this is the only copy.",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "snapshot": "node --env-file-if-exists=../.env.local snapshot.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
+  }
+}
