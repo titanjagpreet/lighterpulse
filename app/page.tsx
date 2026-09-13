@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { Wordmark } from "@/components/terminal/mark";
 import { CommandSearch } from "@/components/terminal/command-search";
@@ -9,7 +9,9 @@ import {
 } from "@/components/terminal/market-field";
 import { SeriesChart } from "@/components/terminal/charts";
 import { TokenIcon } from "@/components/terminal/token-icon";
-import { lighterApp, LIGHTER_DOCS, REFERRAL_REL } from "@/lib/links";
+import { SiteFooter } from "@/components/terminal/site-footer";
+import { JsonLd } from "@/components/json-ld";
+import { siteSchema } from "@/lib/site";
 import {
   Delta,
   Figure,
@@ -66,21 +68,21 @@ export default async function LandingPage() {
         <div className="grow" />
         <nav className="hidden items-center gap-6 md:flex" aria-label="Sections">
           {NAV.map((n) => (
-            <Link
+            <IntentLink
               key={n.href}
               href={n.href}
               className="ctl text-[12.5px] text-ink-2 hover:text-ink"
             >
               {n.label}
-            </Link>
+            </IntentLink>
           ))}
         </nav>
-        <Link
+        <IntentLink
           href="/overview"
           className="ctl figure rounded-[3px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink hover:border-ink-4"
         >
           Open terminal →
-        </Link>
+        </IntentLink>
       </header>
 
       {/* ── hero ───────────────────────────────────────────── */}
@@ -109,12 +111,12 @@ export default async function LandingPage() {
                 placeholder="Track any address, transaction or block"
                 className="w-full max-w-[470px]"
               />
-              <Link
+              <IntentLink
                 href="/overview"
                 className="figure ctl flex h-[46px] items-center rounded-[4px] bg-ink px-6 text-[13px] font-medium text-surface hover:bg-white"
               >
                 Open terminal
-              </Link>
+              </IntentLink>
             </div>
 
             <Measure className="max-w-[640px]" />
@@ -181,7 +183,7 @@ export default async function LandingPage() {
         {topMarkets.map((m) => {
           const tag = ASSET_CLASS_TAG[m.assetClass];
           return (
-            <Link
+            <IntentLink
               key={m.marketId}
               href={`/markets/${m.symbol}`}
               className="row-hit grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-hair py-3 last:border-0"
@@ -225,7 +227,7 @@ export default async function LandingPage() {
                   tone="up"
                 />
               </span>
-            </Link>
+            </IntentLink>
           );
         })}
         </div>
@@ -289,7 +291,7 @@ export default async function LandingPage() {
           <span className="text-right">Return</span>
         </div>
         {leaders.map((e) => (
-          <Link
+          <IntentLink
             key={e.address}
             href={`/a/${e.address}`}
             className="row-hit grid grid-cols-[36px_minmax(0,1fr)_116px_116px_78px] items-center border-b border-hair py-3 last:border-0"
@@ -311,7 +313,7 @@ export default async function LandingPage() {
               glyph={false}
               className="text-right text-[12.5px]"
             />
-          </Link>
+          </IntentLink>
         ))}
         </div>
         </div>
@@ -333,12 +335,12 @@ export default async function LandingPage() {
           {exampleAddress && (
             <p className="text-[12.5px] text-ink-3">
               Or try the top trader:{" "}
-              <Link
+              <IntentLink
                 href={`/a/${exampleAddress}`}
                 className="figure text-ink underline decoration-edge underline-offset-4 hover:decoration-ink-3"
               >
                 {addr(exampleAddress)}
-              </Link>
+              </IntentLink>
             </p>
           )}
           <div className="mt-1 grid gap-px border-t border-hair pt-5 sm:grid-cols-3">
@@ -379,65 +381,8 @@ export default async function LandingPage() {
       </section>
 
       {/* ── footer ─────────────────────────────────────────── */}
-      <footer className="flex flex-wrap items-start gap-10 px-6 py-9 sm:px-11">
-        <div className="flex flex-col gap-3">
-          <Wordmark size={14} tone="muted" pulse={false} />
-          <span className="figure text-[11px] text-ink-4">
-            Built on the public Lighter API. Not affiliated with Lighter.
-          </span>
-          <span className="figure text-[11px] text-ink-4">
-            Links that open Lighter&rsquo;s app carry a referral code.
-          </span>
-        </div>
-        <div className="grow" />
-        <div className="flex flex-wrap gap-x-14 gap-y-8">
-          <FooterCol
-            title="Terminal"
-            links={[
-              ["/overview", "Overview"],
-              ["/markets", "Markets"],
-              ["/funding", "Funding"],
-              ["/liquidations", "Liquidations"],
-            ]}
-          />
-          <FooterCol
-            title="Data"
-            links={[
-              ["/leaderboard", "Leaderboard"],
-              ["/lit", "LIT"],
-              ["/llp", "LLP & vaults"],
-              ["/explorer", "Explorer"],
-            ]}
-          />
-          <div className="flex flex-col gap-2.5">
-            <Label className="mb-0.5">Lighter</Label>
-            <a
-              href={lighterApp()}
-              target="_blank"
-              rel={REFERRAL_REL}
-              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
-            >
-              Open Lighter ↗
-            </a>
-            <a
-              href={LIGHTER_DOCS.home}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
-            >
-              Docs ↗
-            </a>
-            <a
-              href={LIGHTER_DOCS.api}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
-            >
-              API docs ↗
-            </a>
-          </div>
-        </div>
-      </footer>
+      <JsonLd data={siteSchema()} />
+      <SiteFooter markets={o.markets.slice(0, 8).map((m) => m.symbol)} />
     </div>
   );
 }
@@ -524,38 +469,15 @@ function Section({
         </h2>
         <p className="mb-6 text-[14px] leading-[1.62] text-ink-2">{copy}</p>
         {cta && (
-          <Link
+          <IntentLink
             href={cta.href}
             className="figure ctl -mt-1.5 inline-block border-b border-edge pt-1.5 pb-1 text-[12px] text-ink-2 hover:border-ink-3 hover:text-ink"
           >
             {cta.label} →
-          </Link>
+          </IntentLink>
         )}
       </div>
       <div className="min-w-0">{children}</div>
     </section>
-  );
-}
-
-function FooterCol({
-  title,
-  links,
-}: {
-  title: string;
-  links: [string, string][];
-}) {
-  return (
-    <div className="flex flex-col gap-2.5">
-      <Label className="mb-0.5">{title}</Label>
-      {links.map(([href, label]) => (
-        <Link
-          key={href}
-          href={href}
-          className="ctl -my-1 py-1 text-[12px] text-ink-2 hover:text-ink"
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
   );
 }
