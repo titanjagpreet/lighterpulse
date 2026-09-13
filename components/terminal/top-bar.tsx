@@ -7,7 +7,9 @@ import { Wordmark } from "./mark";
 import { CommandSearch } from "./command-search";
 import { LiveHeight } from "./live-height";
 import { Delta, Figure } from "./primitives";
+import { XLogo } from "./x-logo";
 import { price } from "@/lib/format";
+import { SITE_X } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -28,7 +30,8 @@ const NAV = [
  *
  * Eight sections and a search do not fit a phone or a narrow laptop, so
  * below `xl` the search (and below `lg` the sections too) move into a
- * panel under the bar rather than being squeezed or cut off.
+ * panel under the bar rather than being squeezed or cut off. The site's X
+ * account sits beside the watchlist as an icon; on a phone, in the panel.
  */
 export function TopBar({
   litPrice,
@@ -109,6 +112,17 @@ export function TopBar({
           </svg>
         </IntentLink>
 
+        <a
+          href={SITE_X.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`LighterPulse on X, ${SITE_X.handle}`}
+          title={`${SITE_X.handle} on X`}
+          className="ctl hidden size-7 shrink-0 place-items-center rounded-[3px] text-ink-3 hover:text-ink sm:grid pointer-coarse:size-9"
+        >
+          <XLogo size={12} />
+        </a>
+
         {litPrice != null && (
           <IntentLink
             href="/lit"
@@ -173,6 +187,16 @@ export function TopBar({
               {litChange != null && <Delta value={litChange} className="text-[11px]" />}
             </IntentLink>
           )}
+          {/* On a phone the bar has no room for the X icon, so it lives here. */}
+          <a
+            href={SITE_X.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ctl mt-3 flex w-fit items-center gap-2 text-[12.5px] text-ink-2 hover:text-ink sm:hidden"
+          >
+            <XLogo size={12} />
+            {SITE_X.handle}
+          </a>
         </div>
       )}
     </header>

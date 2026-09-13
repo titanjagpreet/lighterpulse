@@ -11,6 +11,12 @@ export const SITE_NAME = "LighterPulse";
 export const SITE_DESCRIPTION =
   "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter — open interest, buybacks and live positions across every market.";
 
+/** The site's account on X. */
+export const SITE_X = {
+  handle: "@singhxbt",
+  url: "https://x.com/singhxbt",
+} as const;
+
 /** An absolute URL on this site, e.g. `siteUrl("/markets/BTC")`. */
 export function siteUrl(path = "/"): string {
   return path === "/" ? SITE_URL : `${SITE_URL}${path}`;
@@ -50,6 +56,8 @@ export function siteSchema() {
         name: SITE_NAME,
         url: SITE_URL,
         logo: siteUrl("/apple-icon.png"),
+        // Ties the brand to its X account for search engines.
+        sameAs: [SITE_X.url],
       },
     ],
   };

@@ -1,7 +1,9 @@
 import { IntentLink } from "./intent-link";
 import { Wordmark } from "./mark";
 import { Label } from "./primitives";
+import { XLogo } from "./x-logo";
 import { lighterApp, LIGHTER_DOCS, REFERRAL_REL } from "@/lib/links";
+import { SITE_X } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const TERMINAL: [string, string][] = [
@@ -44,6 +46,15 @@ export function SiteFooter({
         <span className="figure text-[11px] text-ink-3">
           Links that open Lighter&rsquo;s app carry a referral code.
         </span>
+        <a
+          href={SITE_X.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(LINK, "mt-1 flex w-fit items-center gap-2")}
+        >
+          <XLogo size={12} />
+          {SITE_X.handle}
+        </a>
       </div>
       <div className="grow" />
       <div className="flex flex-wrap gap-x-14 gap-y-8">

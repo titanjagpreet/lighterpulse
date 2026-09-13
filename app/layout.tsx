@@ -4,7 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import { preconnect } from "react-dom";
 import { API_BASE_PUBLIC } from "@/lib/lighter/public";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, SITE_X } from "@/lib/site";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -64,8 +64,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@singhxbt",
-    creator: "@singhxbt",
+    site: SITE_X.handle,
+    creator: SITE_X.handle,
   },
   category: "Finance",
 };

@@ -10,8 +10,9 @@ import {
 import { SeriesChart } from "@/components/terminal/charts";
 import { TokenIcon } from "@/components/terminal/token-icon";
 import { SiteFooter } from "@/components/terminal/site-footer";
+import { XLogo } from "@/components/terminal/x-logo";
 import { JsonLd } from "@/components/json-ld";
-import { siteSchema } from "@/lib/site";
+import { SITE_X, siteSchema } from "@/lib/site";
 import {
   Delta,
   Figure,
@@ -77,6 +78,18 @@ export default async function LandingPage() {
             </IntentLink>
           ))}
         </nav>
+        <a
+          href={SITE_X.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`LighterPulse on X, ${SITE_X.handle}`}
+          // Hidden on phones, where it pushed "Open terminal" onto two lines;
+          // the footer carries it there.
+          className="ctl -mx-1 hidden items-center gap-2 px-1 py-1 text-[12.5px] text-ink-2 hover:text-ink sm:flex"
+        >
+          <XLogo size={13} />
+          <span className="hidden md:inline">{SITE_X.handle}</span>
+        </a>
         <IntentLink
           href="/overview"
           className="ctl figure rounded-[3px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink hover:border-ink-4"
