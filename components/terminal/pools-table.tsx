@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useMemo, useState } from "react";
 import { Chip, Figure, MagnitudeBar, Segmented } from "./primitives";
 import { LLP_INDEX, MIN_APR_TVL, ZERO_ADDRESS, type PublicPool } from "@/lib/pools";
@@ -135,13 +135,13 @@ export function PoolsTable({ pools }: { pools: PublicPool[] }) {
                   <Figure className="text-[10.5px] text-ink-4">{i + 1}</Figure>
                   <span className="flex min-w-0 items-baseline gap-2">
                     {/* the name's overlay makes the whole row the link */}
-                    <Link
+                    <IntentLink
                       href={poolHref(p.index)}
                       className="truncate text-[12.5px] font-medium after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                       title={p.name}
                     >
                       {p.name}
-                    </Link>
+                    </IntentLink>
                     {p.index === LLP_INDEX ? (
                       <Chip tone="brand">LLP</Chip>
                     ) : p.type === 3 ? (
@@ -177,12 +177,12 @@ export function PoolsTable({ pools }: { pools: PublicPool[] }) {
                     {p.createdAt ? dayLabel(p.createdAt, true) : "—"}
                   </Figure>
                   {p.operator && p.operator !== ZERO_ADDRESS ? (
-                    <Link
+                    <IntentLink
                       href={`/a/${p.operator}`}
                       className="figure relative z-[2] truncate text-[11px] text-ink-3 hover:text-ink"
                     >
                       {addr(p.operator, 6, 4)}
-                    </Link>
+                    </IntentLink>
                   ) : (
                     <span className="figure text-[11px] text-ink-4">protocol</span>
                   )}

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimeAgo } from "./as-of";
 import { Pager, type PageSize } from "./pager";
@@ -231,9 +231,9 @@ export function AccountActivity({
                     ) : symbol.includes("/") || symbol.startsWith("#") ? (
                       symbol
                     ) : (
-                      <Link href={`/markets/${symbol}`} className="hover:underline hover:decoration-edge hover:underline-offset-4">
+                      <IntentLink href={`/markets/${symbol}`} className="hover:underline hover:decoration-edge hover:underline-offset-4">
                         {symbol}
-                      </Link>
+                      </IntentLink>
                     )}
                   </span>
 
@@ -250,24 +250,24 @@ export function AccountActivity({
                   <span className="flex min-w-0 items-center justify-end gap-3">
                     {r.counterparty != null &&
                       (r.counterparty === STAKING_POOL_INDEX ? (
-                        <Link href="/lit#staking" className="figure truncate text-[10.5px] text-ink-3 hover:text-ink">
+                        <IntentLink href="/lit#staking" className="figure truncate text-[10.5px] text-ink-3 hover:text-ink">
                           staking pool
-                        </Link>
+                        </IntentLink>
                       ) : (
-                        <Link
+                        <IntentLink
                           href={`/a/${r.counterparty}`}
                           className="figure truncate text-[10.5px] text-ink-3 hover:text-ink"
                         >
                           #{r.counterparty}
-                        </Link>
+                        </IntentLink>
                       ))}
-                    <Link
+                    <IntentLink
                       href={`/explorer/tx/${r.hash}`}
                       title={r.hash}
                       className="figure shrink-0 text-[10.5px] text-ink-3 hover:text-ink"
                     >
                       {hash(r.hash, 6, 4)}
-                    </Link>
+                    </IntentLink>
                   </span>
                 </div>
               );

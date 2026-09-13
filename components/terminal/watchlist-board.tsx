@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useEffect, useMemo, useState } from "react";
 import { useWatchlist } from "@/lib/use-watchlist";
 import {
@@ -91,9 +91,9 @@ export function WatchlistBoard({ markets }: { markets: BoardMarket[] }) {
         ) : marketRows.length === 0 ? (
           <p className="py-6 text-[12px] text-ink-3">
             Star markets on the{" "}
-            <Link href="/markets" className="text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink">
+            <IntentLink href="/markets" className="text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink">
               Markets
-            </Link>{" "}
+            </IntentLink>{" "}
             page to follow them here.
           </p>
         ) : (
@@ -118,13 +118,13 @@ export function WatchlistBoard({ markets }: { markets: BoardMarket[] }) {
                 >
                   <WatchStar marketId={m.marketId} symbol={m.symbol} />
                   {/* the symbol's overlay makes the whole row the link; the star sits above it */}
-                  <Link
+                  <IntentLink
                     href={`/markets/${m.symbol}`}
                     className="flex min-w-0 items-center gap-2 text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                   >
                     <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
                     <span className="truncate">{m.symbol}</span>
-                  </Link>
+                  </IntentLink>
                   <Figure className="text-right text-[12.5px]">{price(m.markPrice)}</Figure>
                   <Delta value={m.change24h} glyph={false} className="text-right text-[12px]" />
                   <Figure className="text-right text-[12px]">{usdCompact(m.oiUsd, 1)}</Figure>
@@ -317,12 +317,12 @@ function AccountRow({
   return (
     <div className={cn("row-hit grid items-center gap-x-4 border-b border-hair py-2.5", ACCOUNT_COLS)}>
       <span className="flex min-w-0 flex-col">
-        <Link
+        <IntentLink
           href={`/a/${entry.address || entry.index}`}
           className="figure truncate text-[12px] hover:underline hover:decoration-edge hover:underline-offset-4"
         >
           {label}
-        </Link>
+        </IntentLink>
         <Figure className="text-[9.5px] text-ink-4">#{entry.index}</Figure>
       </span>
       {view ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { usePathname } from "next/navigation";
 import { Figure } from "./primitives";
 import { compact, num, usdCompact } from "@/lib/format";
@@ -51,7 +51,7 @@ export function StatsStrip({ stats }: { stats: StripStats }) {
       className="flex h-8 items-center gap-6 overflow-x-auto border-b border-line bg-rail px-4 whitespace-nowrap sm:px-5"
     >
       {items.map((it) => (
-        <Link
+        <IntentLink
           key={it.label}
           href={it.href}
           className="ctl flex shrink-0 items-baseline gap-1.5 text-ink-3 hover:text-ink-2"
@@ -59,7 +59,7 @@ export function StatsStrip({ stats }: { stats: StripStats }) {
           <span className="label text-[9px]">{it.label}</span>
           <Figure className="text-[11.5px] text-ink">{it.value}</Figure>
           {it.sub && <Figure className="text-[10px] text-ink-4">{it.sub}</Figure>}
-        </Link>
+        </IntentLink>
       ))}
     </div>
   );

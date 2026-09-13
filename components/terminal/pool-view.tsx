@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useEffect, useMemo, useState } from "react";
 import { AsOf } from "./as-of";
 import { Backtest } from "./backtest";
@@ -285,9 +285,9 @@ export function PoolLoader({ index, meta }: { index: number; meta: PublicPool | 
   return (
     <div>
       <div className="border-b border-line bg-panel px-5 py-4">
-        <Link href="/llp#vaults" className="figure ctl mb-2 inline-block text-[10.5px] text-ink-3 hover:text-ink">
+        <IntentLink href="/llp#vaults" className="figure ctl mb-2 inline-block text-[10.5px] text-ink-3 hover:text-ink">
           ← All pools
-        </Link>
+        </IntentLink>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="min-w-0 text-[17px] font-semibold tracking-[-0.015em] break-words">{name}</h1>
           <Chip>{meta?.type === 3 ? "PROTOCOL POOL" : "PUBLIC POOL"}</Chip>
@@ -300,9 +300,9 @@ export function PoolLoader({ index, meta }: { index: number; meta: PublicPool | 
           {operator && operator !== ZERO_ADDRESS && (
             <span>
               operator{" "}
-              <Link href={`/a/${operator}`} className="text-ink-2 hover:text-ink">
+              <IntentLink href={`/a/${operator}`} className="text-ink-2 hover:text-ink">
                 {addr(operator, 8, 6)}
-              </Link>
+              </IntentLink>
             </span>
           )}
           {fee != null && (
@@ -337,9 +337,9 @@ export function PoolLoader({ index, meta }: { index: number; meta: PublicPool | 
           <p className="mb-2 text-[15px] font-medium">Not a pool</p>
           <p className="text-[12.5px] text-ink-3">
             Account #{index} has no pool history.{" "}
-            <Link href={`/a/${index}`} className="text-ink underline decoration-edge underline-offset-4">
+            <IntentLink href={`/a/${index}`} className="text-ink underline decoration-edge underline-offset-4">
               View it as an account
-            </Link>
+            </IntentLink>
             .
           </p>
         </div>

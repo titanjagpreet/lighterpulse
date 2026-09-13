@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { lighterSocket } from "@/lib/lighter/ws";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import {
@@ -171,12 +171,12 @@ export function AddressDashboard({
         <p className="mx-auto max-w-[46ch] text-[12.5px] leading-relaxed text-ink-3">
           That address has never traded on Lighter, or the index does not exist.
           Try an address from the{" "}
-          <Link
+          <IntentLink
             href="/leaderboard"
             className="text-ink underline decoration-edge underline-offset-4"
           >
             leaderboard
-          </Link>
+          </IntentLink>
           .
         </p>
       </div>

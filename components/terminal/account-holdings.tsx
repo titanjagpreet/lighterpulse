@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useEffect, useMemo, useState } from "react";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import type { Account } from "@/lib/lighter/account";
@@ -171,12 +171,12 @@ export function AccountHoldings({ account }: { account: Account }) {
             return (
               <div key={h.key} className="border-t border-hair py-2">
                 <div className="flex items-baseline justify-between gap-3">
-                  <Link
+                  <IntentLink
                     href={h.href}
                     className="min-w-0 truncate text-[12px] font-medium hover:underline hover:decoration-edge hover:underline-offset-4"
                   >
                     {h.name}
-                  </Link>
+                  </IntentLink>
                   <Figure
                     className="shrink-0 text-[11.5px]"
                     title={

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "./mark";
@@ -59,15 +59,15 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-panel">
       <div className="flex h-11 items-center gap-4 px-4 sm:px-5 lg:gap-5">
-        <Link href="/" className="flex h-full shrink-0 items-center" aria-label="LighterPulse home">
+        <IntentLink href="/" className="flex h-full shrink-0 items-center" aria-label="LighterPulse home">
           <Wordmark size={15} />
-        </Link>
+        </IntentLink>
 
         <nav className="hidden h-full items-stretch lg:flex" aria-label="Terminal">
           {NAV.map((item) => {
             const active = isActive(item.href);
             return (
-              <Link
+              <IntentLink
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
@@ -79,7 +79,7 @@ export function TopBar({
                 )}
               >
                 {item.label}
-              </Link>
+              </IntentLink>
             );
           })}
         </nav>
@@ -88,7 +88,7 @@ export function TopBar({
 
         <CommandSearch className="hidden w-[248px] xl:block" />
 
-        <Link
+        <IntentLink
           href="/watchlist"
           aria-label="Watchlist"
           aria-current={watching ? "page" : undefined}
@@ -107,17 +107,17 @@ export function TopBar({
               strokeLinejoin="round"
             />
           </svg>
-        </Link>
+        </IntentLink>
 
         {litPrice != null && (
-          <Link
+          <IntentLink
             href="/lit"
             className="hidden items-baseline gap-2 border-l border-edge pl-4 2xl:flex"
           >
             <span className="label">LIT</span>
             <Figure className="text-[12.5px] font-medium">{price(litPrice)}</Figure>
             {litChange != null && <Delta value={litChange} className="text-[11px]" />}
-          </Link>
+          </IntentLink>
         )}
 
         <LiveHeight initial={initialHeight} />
@@ -152,7 +152,7 @@ export function TopBar({
             {NAV.map((item) => {
               const active = isActive(item.href);
               return (
-                <Link
+                <IntentLink
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
@@ -162,16 +162,16 @@ export function TopBar({
                   )}
                 >
                   {item.label}
-                </Link>
+                </IntentLink>
               );
             })}
           </nav>
           {litPrice != null && (
-            <Link href="/lit" className="mt-3 flex items-baseline gap-2 2xl:hidden">
+            <IntentLink href="/lit" className="mt-3 flex items-baseline gap-2 2xl:hidden">
               <span className="label">LIT</span>
               <Figure className="text-[12.5px] font-medium">{price(litPrice)}</Figure>
               {litChange != null && <Delta value={litChange} className="text-[11px]" />}
-            </Link>
+            </IntentLink>
           )}
         </div>
       )}

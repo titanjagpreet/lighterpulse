@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useEffect, useState } from "react";
 import { useWatchlist } from "@/lib/use-watchlist";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
@@ -109,18 +109,18 @@ export function WatchlistStrip({ markets }: { markets: StripMarket[] }) {
       ) : rows.length === 0 ? (
         <p className="flex items-center px-5 text-[11.5px] text-ink-3">
           Star markets on the{" "}
-          <Link
+          <IntentLink
             href="/markets"
             className="mx-1 text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink"
           >
             Markets
-          </Link>{" "}
+          </IntentLink>{" "}
           page to pin them here.
         </p>
       ) : (
         <div className="flex min-w-0 grow overflow-x-auto">
           {rows.map((r) => (
-            <Link
+            <IntentLink
               key={r.marketId}
               href={`/markets/${r.symbol}`}
               className="row-hit flex shrink-0 items-center gap-3.5 border-r border-line px-5 py-2.5"
@@ -136,7 +136,7 @@ export function WatchlistStrip({ markets }: { markets: StripMarket[] }) {
                 height={22}
                 dir={dirOf(r.change)}
               />
-            </Link>
+            </IntentLink>
           ))}
         </div>
       )}

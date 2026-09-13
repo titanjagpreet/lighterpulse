@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useMemo, useState } from "react";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import { reprice, type Position } from "@/lib/lighter/account";
@@ -172,12 +172,12 @@ export function PositionsBook({
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     {/* the symbol's overlay makes the whole row the link */}
-                    <Link
+                    <IntentLink
                       href={`/markets/${p.symbol}`}
                       className="text-[12.5px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                     >
                       {p.symbol}
-                    </Link>
+                    </IntentLink>
                     {p.leverage > 0 && (
                       <Figure className="text-[9.5px] text-ink-3">
                         {p.leverage.toFixed(p.leverage < 10 ? 1 : 0)}×

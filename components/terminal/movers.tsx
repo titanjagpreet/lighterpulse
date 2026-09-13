@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useMemo } from "react";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import { Figure, MagnitudeBar } from "./primitives";
@@ -66,7 +66,7 @@ export function Movers({ markets }: { markets: MoverMarket[] }) {
         </p>
       ) : (
         rows.map((m) => (
-          <Link
+          <IntentLink
             key={m.marketId}
             href={`/markets/${m.symbol}`}
             className={cn("row-hit grid items-center gap-x-3 border-t border-hair py-1.5", COLS)}
@@ -88,7 +88,7 @@ export function Movers({ markets }: { markets: MoverMarket[] }) {
               {dir === "up" ? "+" : "−"}
               {Math.abs(m.change24h).toFixed(2)}%
             </Figure>
-          </Link>
+          </IntentLink>
         ))
       )}
     </div>
