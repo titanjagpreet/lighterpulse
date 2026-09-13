@@ -390,16 +390,16 @@ async function recordPoolsSafely(hour, publishAt) {
 }
 
 async function recordPools(hour, publishAt) {
-  const [staking, llp, buyback, burned] = await Promise.all([
+  const [staking, buyback, burned] = await Promise.all([
     fetchAccount(STAKING_POOL_INDEX),
-    fetchAccount(LLP_INDEX),
     fetchAccount(BUYBACK_ACCOUNT_INDEX),
     fetchBurned().catch((err) => {
       console.error("⚠ burned balance unavailable:", err instanceof Error ? err.message : err);
       return null;
     }),
   ]);
-  const vaults = await fetchPublicPools();
+  // The public pool list includes the LLP.
+  const poolRows = await fetchPublicPools();
 
   const litOf = (account) => Number(account?.assets?.find((a) => a.symbol === "LIT")?.balance);
   const finite = (v) => (Number.isFinite(v) ? v : null);
@@ -407,13 +407,13 @@ async function recordPools(hour, publishAt) {
   const stakedShares = finite(Number(staking?.pool_info?.total_shares));
   const held = finite(litOf(buyback));
 
+  // A pool's value as Lighter's own client computes it: the perps account
+  // plus spot holdings. The LLP alone holds millions in spot.
   const tvl = new Map();
-  const llpTvl = Number(llp?.total_asset_value);
-  if (llpTvl > 0) tvl.set(LLP_INDEX, { tvl: llpTvl, shares: Number(llp?.pool_info?.total_shares) || 0 });
-  for (const p of vaults) {
+  for (const p of poolRows) {
     const index = Number(p.account_index);
-    const value = Number(p.total_asset_value);
-    if (index === LLP_INDEX || !(value >= POOL_TVL_FLOOR)) continue;
+    const value = (Number(p.total_asset_value) || 0) + (Number(p.total_spot_value) || 0);
+    if (!(value >= POOL_TVL_FLOOR)) continue;
     tvl.set(index, { tvl: value, shares: Number(p.total_shares) || 0 });
   }
   const poolIds = [...tvl.keys()];

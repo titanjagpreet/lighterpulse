@@ -10,6 +10,7 @@ import { SectionNav } from "./section-nav";
 import { LighterLink } from "./lighter-link";
 import { Chip, Empty, Figure, Label, MetricCell } from "./primitives";
 import {
+  MIN_APR_TVL,
   ZERO_ADDRESS,
   annualised,
   fetchPoolDetail,
@@ -58,9 +59,12 @@ export function PoolView({
   const s = detail.info.sharePrice;
   const r = detail.info.dailyReturns;
   const hasHistory = s.values.length > 1;
+  // As in Lighter's app, a pool this small gets no annualised figures — a few
+  // dollars' swing would read as hundreds of percent.
+  const tiny = detail.tvl < MIN_APR_TVL;
 
-  const apr30 = aprOver(s, 30);
-  const aprAll = aprOver(s, null);
+  const apr30 = tiny ? null : aprOver(s, 30);
+  const aprAll = tiny ? null : aprOver(s, null);
   const lastReturn = r.values.length ? r.values[r.values.length - 1] * 100 : null;
   const leverage = detail.tvl > 0 ? detail.notional / detail.tvl : null;
 
@@ -83,19 +87,25 @@ export function PoolView({
           label="APR · 30 days"
           value={signedPct(apr30)}
           tone={toneOf(apr30)}
-          sub="share-price growth, annualised"
+          sub={tiny ? "not shown under $1K TVL" : "share-price growth, annualised"}
         />
         <MetricCell
           label="APR · all time"
           value={signedPct(aprAll)}
           tone={toneOf(aprAll)}
-          sub={hasHistory ? `since ${dayLabel(s.start, true)}` : undefined}
+          sub={
+            tiny
+              ? "not shown under $1K TVL"
+              : hasHistory
+                ? `since ${dayLabel(s.start, true)}`
+                : undefined
+          }
         />
         <MetricCell
           label="Sharpe"
           value={detail.info.sharpe != null ? detail.info.sharpe.toFixed(2) : "—"}
           sub={
-            detail.info.apy != null
+            detail.info.apy != null && !tiny
               ? `Lighter lists ${signedPct(detail.info.apy)} APY`
               : "Lighter's figure"
           }
@@ -122,7 +132,7 @@ export function PoolView({
               </h2>
               <RangeNote prefix="daily, UTC" />
               <div className="grow" />
-              <RangeReturn series={s} />
+              <RangeReturn series={s} withApr={!tiny} />
               <RangeToggle />
             </div>
             <div className="grid md:grid-cols-2">
@@ -182,8 +192,10 @@ export function PoolView({
           <PositionsBook positions={detail.positions} />
         </div>
         <aside className="bg-rail p-5">
-          <Label className="mb-3">Account</Label>
-          <Rail label="Account value" value={usd(detail.tvl)} />
+          <Label className="mb-3">Pool</Label>
+          <Rail label="Pool value" value={usd(detail.tvl)} />
+          <Rail label="Perps account" value={usd(detail.perpsValue)} />
+          {detail.spotValue > 0 && <Rail label="Spot holdings" value={usd(detail.spotValue)} />}
           <Rail label="Collateral" value={usd(detail.collateral)} />
           <Rail label="Available" value={usd(detail.available)} />
           <Rail label="Open notional" value={usdCompact(detail.notional)} />
@@ -204,11 +216,11 @@ export function PoolView({
 }
 
 /** Return over the chosen range, beside the range toggle. */
-function RangeReturn({ series }: { series: DailySeries }) {
+function RangeReturn({ series, withApr }: { series: DailySeries; withApr: boolean }) {
   const range = useRange();
   const r = periodReturn(series, daysOf(range));
   if (!r) return null;
-  const apr = annualised(r.ratio, r.days);
+  const apr = withApr ? annualised(r.ratio, r.days) : null;
   return (
     <span className="figure text-[11px] text-ink-3">
       <span className={r.ratio >= 0 ? "text-up" : "text-down"}>{signedPct(r.ratio * 100, 2)}</span>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Chip, Figure, MagnitudeBar, Segmented } from "./primitives";
-import { LLP_INDEX, ZERO_ADDRESS, type PublicPool } from "@/lib/pools";
+import { LLP_INDEX, MIN_APR_TVL, ZERO_ADDRESS, type PublicPool } from "@/lib/pools";
 import { addr, dayLabel, num, usdCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,9 @@ const COLS =
   "grid-cols-[30px_minmax(200px,2fr)_minmax(120px,1fr)_minmax(80px,0.7fr)_minmax(64px,0.55fr)_minmax(52px,0.45fr)_minmax(96px,0.8fr)_minmax(120px,1fr)]";
 
 export const poolHref = (index: number) => (index === LLP_INDEX ? "/llp" : `/llp/${index}`);
+
+/** Lighter's app shows no APR for a pool under $1K — a few dollars' swing reads as hundreds of percent. */
+const apyOf = (p: PublicPool) => (p.tvl < MIN_APR_TVL ? null : p.apy);
 
 export function PoolsTable({ pools }: { pools: PublicPool[] }) {
   const [scope, setScope] = useState<"funded" | "all">("funded");
@@ -36,7 +39,7 @@ export function PoolsTable({ pools }: { pools: PublicPool[] }) {
       sort.key === "tvl"
         ? p.tvl
         : sort.key === "apy"
-          ? p.apy
+          ? apyOf(p)
           : sort.key === "sharpe"
             ? p.sharpe
             : p.createdAt;
@@ -119,65 +122,73 @@ export function PoolsTable({ pools }: { pools: PublicPool[] }) {
           {rows.length === 0 ? (
             <p className="py-8 text-center text-[12px] text-ink-3">No pools match.</p>
           ) : (
-            rows.slice(0, shown).map((p, i) => (
-              <div
-                key={p.index}
-                className={cn(
-                  "row-hit relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
-                  COLS,
-                )}
-              >
-                <Figure className="text-[10.5px] text-ink-4">{i + 1}</Figure>
-                <span className="flex min-w-0 items-baseline gap-2">
-                  {/* the name's overlay makes the whole row the link */}
-                  <Link
-                    href={poolHref(p.index)}
-                    className="truncate text-[12.5px] font-medium after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
-                    title={p.name}
-                  >
-                    {p.name}
-                  </Link>
-                  {p.index === LLP_INDEX ? (
-                    <Chip tone="brand">LLP</Chip>
-                  ) : p.type === 3 ? (
-                    <Chip>PROTOCOL</Chip>
-                  ) : null}
-                </span>
-                <span className="flex flex-col items-end gap-1">
-                  <Figure className="text-[12px]">{usdCompact(p.tvl, 2)}</Figure>
-                  <MagnitudeBar value={p.tvl} max={maxTvl} width={96} />
-                </span>
-                <Figure
+            rows.slice(0, shown).map((p, i) => {
+              const apy = apyOf(p);
+              return (
+                <div
+                  key={p.index}
                   className={cn(
-                    "text-right text-[12px]",
-                    p.apy == null ? "text-ink-4" : p.apy >= 0 ? "text-up" : "text-down",
+                    "row-hit relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
+                    COLS,
                   )}
                 >
-                  {p.apy == null
-                    ? "—"
-                    : `${p.apy >= 0 ? "+" : "−"}${Math.abs(p.apy) >= 1000 ? num(Math.abs(p.apy)) : Math.abs(p.apy).toFixed(1)}%`}
-                </Figure>
-                <Figure className="text-right text-[12px] text-ink-2">
-                  {p.sharpe == null ? "—" : p.sharpe.toFixed(2)}
-                </Figure>
-                <Figure className="text-right text-[11.5px] text-ink-3">
-                  {p.operatorFee ? `${p.operatorFee.toFixed(0)}%` : "0%"}
-                </Figure>
-                <Figure className="text-right text-[11px] text-ink-3">
-                  {p.createdAt ? dayLabel(p.createdAt, true) : "—"}
-                </Figure>
-                {p.operator && p.operator !== ZERO_ADDRESS ? (
-                  <Link
-                    href={`/a/${p.operator}`}
-                    className="figure relative z-[2] truncate text-[11px] text-ink-3 hover:text-ink"
+                  <Figure className="text-[10.5px] text-ink-4">{i + 1}</Figure>
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    {/* the name's overlay makes the whole row the link */}
+                    <Link
+                      href={poolHref(p.index)}
+                      className="truncate text-[12.5px] font-medium after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
+                      title={p.name}
+                    >
+                      {p.name}
+                    </Link>
+                    {p.index === LLP_INDEX ? (
+                      <Chip tone="brand">LLP</Chip>
+                    ) : p.type === 3 ? (
+                      <Chip>PROTOCOL</Chip>
+                    ) : null}
+                  </span>
+                  <span className="flex flex-col items-end gap-1">
+                    <Figure className="text-[12px]">{usdCompact(p.tvl, 2)}</Figure>
+                    <MagnitudeBar value={p.tvl} max={maxTvl} width={96} />
+                  </span>
+                  <Figure
+                    className={cn(
+                      "text-right text-[12px]",
+                      apy == null ? "text-ink-4" : apy >= 0 ? "text-up" : "text-down",
+                    )}
+                    title={
+                      p.apy != null && apy == null
+                        ? "Not shown under $1K TVL, as in Lighter's app"
+                        : undefined
+                    }
                   >
-                    {addr(p.operator, 6, 4)}
-                  </Link>
-                ) : (
-                  <span className="figure text-[11px] text-ink-4">protocol</span>
-                )}
-              </div>
-            ))
+                    {apy == null
+                      ? "—"
+                      : `${apy >= 0 ? "+" : "−"}${Math.abs(apy) >= 1000 ? num(Math.abs(apy)) : Math.abs(apy).toFixed(1)}%`}
+                  </Figure>
+                  <Figure className="text-right text-[12px] text-ink-2">
+                    {p.sharpe == null ? "—" : p.sharpe.toFixed(2)}
+                  </Figure>
+                  <Figure className="text-right text-[11.5px] text-ink-3">
+                    {p.operatorFee ? `${p.operatorFee.toFixed(0)}%` : "0%"}
+                  </Figure>
+                  <Figure className="text-right text-[11px] text-ink-3">
+                    {p.createdAt ? dayLabel(p.createdAt, true) : "—"}
+                  </Figure>
+                  {p.operator && p.operator !== ZERO_ADDRESS ? (
+                    <Link
+                      href={`/a/${p.operator}`}
+                      className="figure relative z-[2] truncate text-[11px] text-ink-3 hover:text-ink"
+                    >
+                      {addr(p.operator, 6, 4)}
+                    </Link>
+                  ) : (
+                    <span className="figure text-[11px] text-ink-4">protocol</span>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
@@ -192,8 +203,9 @@ export function PoolsTable({ pools }: { pools: PublicPool[] }) {
         </button>
       )}
       <p className="mt-3 text-[11px] leading-relaxed text-ink-4">
-        APY and Sharpe are Lighter&rsquo;s own figures, computed from each pool&rsquo;s share
-        price. The fee is the operator&rsquo;s cut of profits.
+        TVL is the pool&rsquo;s perps account plus its spot holdings. APY and Sharpe are
+        Lighter&rsquo;s own figures from each pool&rsquo;s share price; as in Lighter&rsquo;s app, APY
+        is not shown under $1K TVL. The fee is the operator&rsquo;s cut of profits.
       </p>
     </div>
   );

@@ -8,11 +8,14 @@ import {
   LLP_INDEX,
   LLP_USDC_PER_STAKED_LIT,
   STAKING_POOL_INDEX,
-  fetchPoolDetail,
-  type PoolDetail,
+  UNSTAKE_LOCKUP_DAYS,
+  fetchPoolMeta,
+  shareEquity,
+  stakedLit,
+  type PublicPool,
 } from "@/lib/pools";
 import { Figure, Label } from "./primitives";
-import { num, usdCompact } from "@/lib/format";
+import { num, usdCompact, usdSigned } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Collateral assets are valued at par; everything else at its live perp mark. */
@@ -22,20 +25,25 @@ interface PoolHolding {
   key: number;
   name: string;
   href: string;
-  /** For staking, LIT; otherwise null. */
-  lit: number | null;
-  principalLit: number | null;
-  usd: number | null;
+  staking: boolean;
+  /** What the shares are worth now — LIT for staking, USD otherwise. */
+  value: number | null;
+  /** What went in, in the same unit. */
+  principal: number;
 }
 
 /**
- * What an account holds beyond its positions: spot balances, perps margin, and
- * shares in the LLP, vaults and LIT staking — each valued in the browser from
- * the pool's own account.
+ * What an account holds beyond its positions: spot balances, perps margin,
+ * LIT unstaking, and shares in the LLP, vaults and LIT staking.
+ *
+ * Pool shares are valued the way Lighter's own app values them: shares ÷ all
+ * shares × the pool's value (perps account plus spot holdings), with the
+ * return being that less the principal paid in. Each pool's metadata row is
+ * one small request from the visitor's browser.
  */
 export function AccountHoldings({ account }: { account: Account }) {
   const { stats } = useMarketStats();
-  const [pools, setPools] = useState<Map<number, PoolDetail | null>>(new Map());
+  const [pools, setPools] = useState<Map<number, PublicPool | null>>(new Map());
 
   const priceOf = useMemo(() => {
     const marks = new Map<string, number>();
@@ -54,8 +62,8 @@ export function AccountHoldings({ account }: { account: Account }) {
     const ctrl = new AbortController();
     Promise.all(
       poolKey.split(",").map((i) =>
-        fetchPoolDetail(Number(i), ctrl.signal)
-          .then((d) => [Number(i), d] as const)
+        fetchPoolMeta(Number(i), ctrl.signal)
+          .then((p) => [Number(i), p] as const)
           .catch(() => [Number(i), null] as const),
       ),
     ).then((entries) => {
@@ -71,40 +79,31 @@ export function AccountHoldings({ account }: { account: Account }) {
   const spotUsd = assets.reduce((s, x) => s + (x.px != null ? x.balance * x.px : 0), 0);
   const marginUsd = assets.reduce((s, x) => s + (x.px != null ? x.marginBalance * x.px : 0), 0);
   const unpriced = assets.filter((x) => x.px == null).length;
+  const litPx = priceOf("LIT");
 
   const holdings: PoolHolding[] = account.shares.map((s) => {
-    const d = pools.get(s.poolIndex) ?? null;
+    const pool = pools.get(s.poolIndex) ?? null;
     if (s.poolIndex === STAKING_POOL_INDEX) {
-      const lit = d?.assets.find((a) => a.symbol === "LIT")?.balance ?? null;
-      const perShare = d && lit && d.info.totalShares > 0 ? lit / d.info.totalShares : null;
-      const value = perShare != null ? s.shares * perShare : null;
-      const litPx = priceOf("LIT");
       return {
         key: s.poolIndex,
         name: "LIT staking",
         href: "/lit#staking",
-        lit: value,
-        principalLit: s.principal || null,
-        usd: value != null && litPx != null ? value * litPx : null,
+        staking: true,
+        value: pool ? stakedLit(s.shares, pool) : null,
+        principal: s.principal,
       };
     }
-    const prices = d?.info.sharePrice.values ?? [];
-    const sharePrice =
-      prices.length > 0
-        ? prices[prices.length - 1]
-        : d && d.info.totalShares > 0
-          ? d.tvl / d.info.totalShares
-          : null;
     return {
       key: s.poolIndex,
-      name: s.poolIndex === LLP_INDEX ? "LLP" : d?.name ?? `Pool #${s.poolIndex}`,
+      name: s.poolIndex === LLP_INDEX ? "LLP" : (pool?.name ?? `Pool #${s.poolIndex}`),
       href: s.poolIndex === LLP_INDEX ? "/llp" : `/llp/${s.poolIndex}`,
-      lit: null,
-      principalLit: null,
-      usd: sharePrice != null ? s.shares * sharePrice : null,
+      staking: false,
+      value: pool ? shareEquity(s.shares, pool) : null,
+      principal: s.principal,
     };
   });
-  const staking = holdings.find((h) => h.key === STAKING_POOL_INDEX);
+  const staking = holdings.find((h) => h.staking);
+  const showPools = holdings.length > 0 || account.pendingUnstake > 0;
 
   return (
     <div>
@@ -162,45 +161,90 @@ export function AccountHoldings({ account }: { account: Account }) {
         </div>
       )}
 
-      {holdings.length > 0 && (
+      {showPools && (
         <div className="mt-5 border-t border-line pt-4">
           <Label className="mb-2">Pools &amp; staking</Label>
-          {holdings.map((h) => (
-            <div key={h.key} className="flex items-baseline justify-between gap-3 border-t border-hair py-2">
-              <span className="min-w-0">
-                <Link
-                  href={h.href}
-                  className="block truncate text-[12px] font-medium hover:underline hover:decoration-edge hover:underline-offset-4"
-                >
-                  {h.name}
-                </Link>
-                {h.lit != null && h.principalLit != null && (
-                  <Figure className="block text-[9.5px] text-ink-4">
-                    {num(h.principalLit, 0)} staked ·{" "}
-                    <span className={cn(h.lit >= h.principalLit ? "text-up" : "text-down")}>
-                      {h.lit >= h.principalLit ? "+" : "−"}
-                      {num(Math.abs(h.lit - h.principalLit), 0)} earned
+
+          {holdings.map((h) => {
+            const gain = h.value != null ? h.value - h.principal : null;
+            const gainPct = gain != null && h.principal > 0 ? (gain / h.principal) * 100 : null;
+            return (
+              <div key={h.key} className="border-t border-hair py-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <Link
+                    href={h.href}
+                    className="min-w-0 truncate text-[12px] font-medium hover:underline hover:decoration-edge hover:underline-offset-4"
+                  >
+                    {h.name}
+                  </Link>
+                  <Figure
+                    className="shrink-0 text-[11.5px]"
+                    title={
+                      h.staking && h.value != null && litPx != null
+                        ? `≈ ${usdCompact(h.value * litPx, 2)}`
+                        : undefined
+                    }
+                  >
+                    {h.value == null
+                      ? "…"
+                      : h.staking
+                        ? `${num(h.value, 0)} LIT`
+                        : usdCompact(h.value, 2)}
+                  </Figure>
+                </div>
+                {gain != null && h.principal > 0 && (
+                  <div className="figure mt-0.5 flex justify-between gap-3 text-[9.5px] text-ink-4">
+                    <span>
+                      {h.staking
+                        ? `${num(h.principal, 0)} LIT staked`
+                        : `${usdCompact(h.principal, 2)} deposited`}
                     </span>
+                    <span className={cn(gain >= 0 ? "text-up" : "text-down")}>
+                      {h.staking
+                        ? `${gain >= 0 ? "+" : "−"}${num(Math.abs(gain), 0)} LIT earned`
+                        : `${usdSigned(gain)} return`}
+                      {gainPct != null && ` (${gainPct >= 0 ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%)`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {account.pendingUnstake > 0 && (
+            <div className="flex items-baseline justify-between gap-3 border-t border-hair py-2">
+              <span>
+                <span className="block text-[12px] font-medium">Unstaking</span>
+                <Figure className="block text-[9.5px] text-ink-4">
+                  {UNSTAKE_LOCKUP_DAYS}-day lockup before it can be withdrawn
+                </Figure>
+              </span>
+              <span className="flex shrink-0 flex-col items-end">
+                <Figure className="text-[11.5px] text-warn">
+                  {num(account.pendingUnstake, 0)} LIT
+                </Figure>
+                {litPx != null && (
+                  <Figure className="text-[9.5px] text-ink-4">
+                    {usdCompact(account.pendingUnstake * litPx, 2)}
                   </Figure>
                 )}
               </span>
-              <span className="flex shrink-0 flex-col items-end">
-                <Figure className="text-[11.5px]">
-                  {h.lit != null ? `${num(h.lit, 0)} LIT` : h.usd != null ? usdCompact(h.usd, 2) : "…"}
-                </Figure>
-                {h.lit != null && h.usd != null && (
-                  <Figure className="text-[9.5px] text-ink-4">{usdCompact(h.usd, 2)}</Figure>
-                )}
-              </span>
             </div>
-          ))}
-          {staking?.lit != null && (
+          )}
+
+          {staking?.value != null && (
             <p className="mt-2 text-[10.5px] leading-relaxed text-ink-4">
               Staked LIT allows up to{" "}
               <span className="figure text-ink-3">
-                {usdCompact(staking.lit * LLP_USDC_PER_STAKED_LIT, 2)}
+                {usdCompact(staking.value * LLP_USDC_PER_STAKED_LIT, 2)}
               </span>{" "}
               of LLP deposits ({LLP_USDC_PER_STAKED_LIT} USDC per LIT).
+            </p>
+          )}
+          {holdings.some((h) => !h.staking) && (
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-4">
+              Valued as Lighter&rsquo;s app does: your shares ÷ all shares × the pool&rsquo;s
+              value, perps and spot.
             </p>
           )}
         </div>

@@ -15,6 +15,10 @@ import type { DailySeries } from "./lighter/types";
  * share count, a daily share-price history and daily returns. Shapes and maths
  * live here, isomorphic, because the LLP page renders on the server while a
  * vault's page loads in the visitor's browser.
+ *
+ * Values follow Lighter's own open-source client (elliottech/lighter-ts): a
+ * pool is worth its perps account plus its spot holdings, a holder owns
+ * shares ÷ total shares of that, and their return is that minus principal.
  */
 
 export const LLP_INDEX = 281474976710654;
@@ -29,6 +33,8 @@ export const LLP_USDC_PER_STAKED_LIT = 10;
 export const UNSTAKE_LOCKUP_DAYS = 3;
 /** Lighter docs, LIT Utility: stakers currently earn a fixed 6% APR. */
 export const DOCUMENTED_STAKING_APR = 6;
+/** Lighter's app shows no APR for a pool smaller than this — the figure is noise. */
+export const MIN_APR_TVL = 1000;
 
 const DAY_MS = 86_400_000;
 
@@ -52,6 +58,23 @@ export interface RawPoolAccount extends RawAccount {
   description?: string;
   created_at?: number;
   pool_info?: RawPoolInfo;
+}
+
+/** A row of `publicPoolsMetadata`. */
+export interface RawPoolMeta {
+  account_index: number;
+  created_at?: number;
+  account_type?: number;
+  name?: string;
+  l1_address?: string;
+  annual_percentage_yield?: number;
+  sharpe_ratio?: number;
+  status?: number;
+  operator_fee?: string;
+  total_asset_value?: string;
+  total_spot_value?: string;
+  total_shares?: number | string;
+  assets?: { symbol?: string; balance?: string }[];
 }
 
 /* ── normalised ──────────────────────────────────────────────── */
@@ -83,7 +106,10 @@ export interface PoolDetail {
   /** Operator's L1 address; the zero address for protocol pools. */
   operator: string;
   createdAt: number | null;
+  /** Pool value: perps account plus spot holdings. */
   tvl: number;
+  perpsValue: number;
+  spotValue: number;
   collateral: number;
   available: number;
   info: PoolInfo;
@@ -96,16 +122,21 @@ export interface PoolDetail {
 export interface PublicPool {
   index: number;
   name: string;
-  /** 2 = public pool, 3 = protocol pool such as the LLP. */
+  /** 2 = public pool, 3 = protocol pool such as the LLP, 4 = staking. */
   type: number;
   operator: string;
   createdAt: number | null;
+  /** Pool value as Lighter's app computes it: perps account plus spot holdings. */
   tvl: number;
+  perpsValue: number;
+  spotValue: number;
   apy: number | null;
   sharpe: number | null;
   operatorFee: number;
   totalShares: number;
   status: number;
+  /** LIT held — how a staking share is valued. */
+  litBalance: number | null;
 }
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -114,6 +145,28 @@ export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const finite = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
+
+export function toPublicPool(r: RawPoolMeta): PublicPool {
+  const perpsValue = n(r.total_asset_value);
+  const spotValue = n(r.total_spot_value);
+  const lit = r.assets?.find((a) => a.symbol === "LIT");
+  return {
+    index: n(r.account_index),
+    name: r.name?.trim() || `Pool #${r.account_index}`,
+    type: n(r.account_type),
+    operator: r.l1_address ?? "",
+    createdAt: r.created_at ? r.created_at * 1000 : null,
+    tvl: perpsValue + spotValue,
+    perpsValue,
+    spotValue,
+    apy: finite(r.annual_percentage_yield),
+    sharpe: finite(r.sharpe_ratio),
+    operatorFee: n(r.operator_fee),
+    totalShares: n(r.total_shares),
+    status: n(r.status),
+    litBalance: lit ? n(lit.balance) : null,
+  };
+}
 
 /**
  * One bucket per UTC day. Lighter stamps pool history at 16:00 New York time,
@@ -179,7 +232,11 @@ export function parsePoolInfo(raw: RawPoolInfo | undefined): PoolInfo {
   };
 }
 
-export function poolDetailFrom(raw: RawPoolAccount): PoolDetail {
+/**
+ * The account endpoint carries no spot value, so `meta` — the pool's metadata
+ * row — supplies it. Without it the value falls back to the perps account.
+ */
+export function poolDetailFrom(raw: RawPoolAccount, meta?: PublicPool | null): PoolDetail {
   const account = normaliseAccount(raw);
   return {
     index: account.index,
@@ -187,7 +244,9 @@ export function poolDetailFrom(raw: RawPoolAccount): PoolDetail {
     description: raw.description?.trim() ?? "",
     operator: account.address,
     createdAt: raw.created_at ? raw.created_at * 1000 : null,
-    tvl: account.totalValue,
+    tvl: meta ? meta.tvl : account.totalValue,
+    perpsValue: account.totalValue,
+    spotValue: meta?.spotValue ?? 0,
     collateral: account.collateral,
     available: account.availableBalance,
     info: parsePoolInfo(raw.pool_info),
@@ -198,20 +257,62 @@ export function poolDetailFrom(raw: RawPoolAccount): PoolDetail {
   };
 }
 
-/** A pool's account, from the visitor's browser. Null when it is not a pool. */
+/* ── browser fetches ─────────────────────────────────────────── */
+
+/**
+ * One pool's metadata row. Pages start one below the index given, so ask for
+ * index + 1 and check the answer really is that pool. Staking pools only
+ * appear under `filter=stake`.
+ */
+export async function fetchPoolMeta(index: number, signal?: AbortSignal): Promise<PublicPool | null> {
+  const filter = index === STAKING_POOL_INDEX ? "stake" : "all";
+  const res = await fetch(
+    `${API_BASE_PUBLIC}/api/v1/publicPoolsMetadata?index=${index + 1}&limit=1&filter=${filter}`,
+    { headers: { accept: "application/json" }, cache: "no-store", signal },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = (await res.json()) as { public_pools?: RawPoolMeta[] };
+  const row = json.public_pools?.[0];
+  return row && n(row.account_index) === index ? toPublicPool(row) : null;
+}
+
+/** A pool's account and metadata, from the visitor's browser. Null when it is not a pool. */
 export async function fetchPoolDetail(
   index: number,
   signal?: AbortSignal,
 ): Promise<PoolDetail | null> {
-  const res = await fetch(`${API_BASE_PUBLIC}/api/v1/account?by=index&value=${index}`, {
-    headers: { accept: "application/json" },
-    cache: "no-store",
-    signal,
-  });
+  const [res, meta] = await Promise.all([
+    fetch(`${API_BASE_PUBLIC}/api/v1/account?by=index&value=${index}`, {
+      headers: { accept: "application/json" },
+      cache: "no-store",
+      signal,
+    }),
+    fetchPoolMeta(index, signal).catch(() => null),
+  ]);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = (await res.json()) as { accounts?: RawPoolAccount[] };
   const raw = json.accounts?.[0];
-  return raw?.pool_info ? poolDetailFrom(raw) : null;
+  return raw?.pool_info ? poolDetailFrom(raw, meta) : null;
+}
+
+/* ── a holder's share ────────────────────────────────────────── */
+
+/** What a holder's shares are worth, the way Lighter's app values them. */
+export function shareEquity(
+  shares: number,
+  pool: Pick<PublicPool, "tvl" | "totalShares">,
+): number | null {
+  return pool.totalShares > 0 ? (shares / pool.totalShares) * pool.tvl : null;
+}
+
+/** LIT a staking position redeems for. */
+export function stakedLit(
+  shares: number,
+  pool: Pick<PublicPool, "litBalance" | "totalShares">,
+): number | null {
+  return pool.totalShares > 0 && pool.litBalance != null
+    ? (shares / pool.totalShares) * pool.litBalance
+    : null;
 }
 
 /* ── maths over a share-price series ─────────────────────────── */

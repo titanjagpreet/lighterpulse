@@ -3,6 +3,8 @@ import { api, explorerApi } from "./client";
 import { cached, type Cached } from "../cache";
 import { n } from "../format";
 import { parseLog, type RawLog } from "./activity";
+import { getOrderBooks } from "./markets";
+import { multipliersFrom, setMultipliers } from "./multiplier";
 import {
   BUYBACK_ACCOUNT_INDEX,
   LIT_SPOT_MARKET_ID,
@@ -10,9 +12,11 @@ import {
   STAKING_POOL_INDEX,
   parsePoolInfo,
   poolDetailFrom,
+  toPublicPool,
   type PoolDetail,
   type PublicPool,
   type RawPoolAccount,
+  type RawPoolMeta,
 } from "../pools";
 import type { DailySeries } from "./types";
 
@@ -37,10 +41,33 @@ async function fetchPoolAccount(index: number): Promise<RawPoolAccount> {
   return raw;
 }
 
+/** One pool's metadata row: pages start one below the index given. */
+async function fetchPoolMeta(index: number, filter: "all" | "stake" = "all"): Promise<PublicPool | null> {
+  const res = await api<{ public_pools?: RawPoolMeta[] }>("publicPoolsMetadata", {
+    index: index + 1,
+    limit: 1,
+    filter,
+  });
+  const row = res.public_pools?.[0];
+  return row && n(row.account_index) === index ? toPublicPool(row) : null;
+}
+
 /* ── LLP ─────────────────────────────────────────────────────── */
 
+async function fetchLlp(): Promise<PoolDetail> {
+  const [raw, meta, books] = await Promise.all([
+    fetchPoolAccount(LLP_INDEX),
+    fetchPoolMeta(LLP_INDEX).catch(() => null),
+    getOrderBooks().catch(() => null),
+  ]);
+  // Its positions arrive in real units; convert with the markets' multipliers.
+  if (books) setMultipliers(multipliersFrom(books.data));
+  return poolDetailFrom(raw, meta);
+}
+
+/** The LLP: book, strategies, spot holdings and 600 days of share prices. */
 export const getLlp = (): Promise<Cached<PoolDetail>> =>
-  cached("pool:llp", 120, async () => poolDetailFrom(await fetchPoolAccount(LLP_INDEX)));
+  cached("pool:llp:v2", 120, fetchLlp);
 
 /* ── LIT staking ─────────────────────────────────────────────── */
 
@@ -125,23 +152,6 @@ export const getStakingRewards = (): Promise<Cached<StakingRewards>> =>
 
 /* ── public pools ────────────────────────────────────────────── */
 
-interface RawPoolMeta {
-  account_index: number;
-  created_at?: number;
-  account_type?: number;
-  name?: string;
-  l1_address?: string;
-  annual_percentage_yield?: number;
-  sharpe_ratio?: number;
-  status?: number;
-  operator_fee?: string;
-  total_asset_value?: string;
-  total_shares?: number;
-}
-
-const finite = (v: unknown): number | null =>
-  typeof v === "number" && Number.isFinite(v) ? v : null;
-
 /**
  * `publicPools` is closed, but `publicPoolsMetadata` is public when paged
  * down from a high index: each page starts one below the index given. Paged
@@ -158,21 +168,7 @@ async function fetchPublicPools(): Promise<PublicPool[]> {
       filter: "all",
     });
     const rows = res.public_pools ?? [];
-    for (const r of rows) {
-      out.push({
-        index: n(r.account_index),
-        name: r.name?.trim() || `Pool #${r.account_index}`,
-        type: n(r.account_type),
-        operator: r.l1_address ?? "",
-        createdAt: r.created_at ? r.created_at * 1000 : null,
-        tvl: n(r.total_asset_value),
-        apy: finite(r.annual_percentage_yield),
-        sharpe: finite(r.sharpe_ratio),
-        operatorFee: n(r.operator_fee),
-        totalShares: n(r.total_shares),
-        status: n(r.status),
-      });
-    }
+    out.push(...rows.map(toPublicPool));
     if (rows.length < PAGE) break;
     cursor = n(rows[rows.length - 1].account_index);
   }
@@ -180,7 +176,7 @@ async function fetchPublicPools(): Promise<PublicPool[]> {
 }
 
 export const getPublicPools = (): Promise<Cached<PublicPool[]>> =>
-  cached("pools:public", 600, fetchPublicPools);
+  cached("pools:public:v2", 600, fetchPublicPools);
 
 /* ── buyback account ─────────────────────────────────────────── */
 

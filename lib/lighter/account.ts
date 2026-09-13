@@ -9,6 +9,7 @@
  */
 
 import { n } from "../format";
+import { displayPrice, displaySize } from "./multiplier";
 import { API_BASE_PUBLIC } from "./public";
 
 export interface Position {
@@ -74,6 +75,8 @@ export interface Account {
   positions: Position[];
   assets: AssetBalance[];
   shares: PoolShare[];
+  /** LIT unstaked and still inside the lockup. */
+  pendingUnstake: number;
   totalUnrealizedPnl: number;
   totalFundingPaid: number;
   totalNotional: number;
@@ -120,14 +123,17 @@ export interface RawAccount {
     principal_amount?: string;
     entry_timestamp?: number;
   }[];
+  /** LIT on its way out of staking — Lighter's own client sums `amount`. */
+  pending_unlocks?: { amount?: string | number }[];
 }
 
 function normalisePosition(p: RawPosition): Position {
-  const size = Math.abs(n(p.position));
+  // Size and prices arrive in real units; USD values need no conversion.
+  const size = displaySize(p.market_id, Math.abs(n(p.position)));
   const valueUsd = Math.abs(n(p.position_value));
-  const entryPrice = n(p.avg_entry_price);
+  const entryPrice = displayPrice(p.market_id, n(p.avg_entry_price));
   const unrealizedPnl = n(p.unrealized_pnl);
-  const liquidationPrice = n(p.liquidation_price);
+  const liquidationPrice = displayPrice(p.market_id, n(p.liquidation_price));
   const side: "long" | "short" = p.sign >= 0 ? "long" : "short";
 
   // The exchange's own mark for this position, implied by value ÷ size.
@@ -208,6 +214,7 @@ export function normaliseAccount(a: RawAccount): Account {
         entryAt: s.entry_timestamp ? n(s.entry_timestamp) * 1000 : null,
       }))
       .filter((s) => s.shares > 0),
+    pendingUnstake: (a.pending_unlocks ?? []).reduce((sum, u) => sum + n(u?.amount), 0),
     totalUnrealizedPnl: positions.reduce((s, p) => s + p.unrealizedPnl, 0),
     totalFundingPaid: positions.reduce((s, p) => s + p.fundingPaid, 0),
     totalNotional: positions.reduce((s, p) => s + p.valueUsd, 0),
