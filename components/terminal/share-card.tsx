@@ -14,7 +14,7 @@ const C = {
   edge: "#232A27",
   ink: "#E2E9E5",
   ink2: "#9BA8A2",
-  ink3: "#66736D",
+  ink3: "#727F79",
   ink4: "#47534E",
   up: "#3FC98A",
   down: "#E36B5C",

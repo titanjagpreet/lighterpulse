@@ -41,7 +41,7 @@ export default function GlobalError({
         <h1 style={{ margin: "28px 0 0", fontSize: 22, letterSpacing: "-0.02em" }}>
           LighterPulse hit a fatal error
         </h1>
-        <p style={{ margin: "12px 0 0", maxWidth: "46ch", fontSize: 13, color: "#66736D", lineHeight: 1.6 }}>
+        <p style={{ margin: "12px 0 0", maxWidth: "46ch", fontSize: 13, color: "#727F79", lineHeight: 1.6 }}>
           The application failed to start. Reloading usually clears it.
         </p>
         <button

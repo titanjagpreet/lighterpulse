@@ -22,7 +22,7 @@
   /* ── ink ─────────────────────────────────────────────────── */
   --color-ink:      #E2E9E5;  /* primary — never pure white */
   --color-ink-2:    #9BA8A2;  /* secondary */
-  --color-ink-3:    #66736D;  /* labels */
+  --color-ink-3:    #727F79;  /* labels — 4.6:1 on panels, the AA floor for small text */
   --color-ink-4:    #47534E;  /* faint */
   --color-ink-5:    #333D39;  /* ghost */
 

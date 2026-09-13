@@ -224,7 +224,7 @@ export function MarketField({
                 x={x}
                 y={ly - 1}
                 textAnchor="middle"
-                fill="#66736D"
+                fill="#727F79"
                 fontFamily="var(--font-mono)"
                 fontSize="8.5"
               >
