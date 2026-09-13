@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { CommandSearch } from "@/components/terminal/command-search";
 import { TimeAgo } from "@/components/terminal/as-of";
@@ -20,7 +20,7 @@ import { hash, num } from "@/lib/format";
 export const revalidate = 10;
 
 export const metadata: Metadata = {
-  title: "Explorer",
+  title: "Lighter Explorer — Blocks, Transactions & Accounts",
   description:
     "Blocks, batches, transactions and accounts on the Lighter zk-rollup. Live chain totals and L1 settlement status.",
   alternates: { canonical: "/explorer" },
@@ -74,7 +74,7 @@ export default async function ExplorerPage() {
           </div>
 
           {(blocks?.data ?? []).slice(0, 12).map((b) => (
-            <Link
+            <IntentLink
               key={b.height}
               href={`/explorer/block/${b.height}`}
               className="row-hit grid grid-cols-[minmax(0,1fr)_92px_120px_72px] items-center border-b border-hair py-2.5 last:border-0"
@@ -93,7 +93,7 @@ export default async function ExplorerPage() {
               <Figure className="text-right text-[11.5px] text-ink-3">
                 <TimeAgo t={b.updatedAt} />
               </Figure>
-            </Link>
+            </IntentLink>
           ))}
 
           {!blocks?.data.length && (

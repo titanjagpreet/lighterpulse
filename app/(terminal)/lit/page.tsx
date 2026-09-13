@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import { SeriesChart, Sparkline } from "@/components/terminal/charts";
 import {
   RangeNote,
@@ -49,11 +49,14 @@ import { DAY_MS, lastDays, sumDays, type RangeKey } from "@/lib/series";
 import type { DailySeries } from "@/lib/lighter/types";
 import { compact, dayLabel, hash, num, price, usd, usdCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { breadcrumbs } from "@/lib/site";
+import { JsonLd } from "@/components/json-ld";
+import { PageHead } from "@/components/terminal/page-head";
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "LIT",
+  title: "LIT Token — Price, Staking, Buybacks & Burns",
   description:
     "LIT price, staking, buybacks and burns — how much LIT is staked and what it earns, how much Lighter has repurchased and at what price, and how much has been burned on Ethereum.",
   alternates: { canonical: "/lit" },
@@ -186,7 +189,8 @@ export default async function LitPage() {
 
   return (
     <div>
-      <h1 className="sr-only">LIT: price, staking, buybacks and burns</h1>
+      <JsonLd data={breadcrumbs([["LIT", "/lit"]])} />
+      <PageHead title="LIT token" note="Price, staking, buybacks and burns." />
 
       {/* ── hero ───────────────────────────────────────────── */}
       <div
@@ -359,12 +363,12 @@ export default async function LitPage() {
                 <Row
                   label="Paid"
                   value={
-                    <Link
+                    <IntentLink
                       href={`/explorer/tx/${lastDrop.hash}`}
                       className="underline decoration-edge underline-offset-4 hover:text-ink"
                     >
                       <TimeAgo t={lastDrop.t} suffix=" ago" />
-                    </Link>
+                    </IntentLink>
                   }
                 />
               )}
@@ -376,12 +380,12 @@ export default async function LitPage() {
               <Row
                 label="Pool account"
                 value={
-                  <Link
+                  <IntentLink
                     href={`/a/${STAKING_POOL_INDEX}`}
                     className="underline decoration-edge underline-offset-4 hover:text-ink"
                   >
                     #{STAKING_POOL_INDEX}
-                  </Link>
+                  </IntentLink>
                 }
               />
 
@@ -651,7 +655,7 @@ export default async function LitPage() {
                   <span>Transaction</span>
                 </div>
                 {fills.map((f) => (
-                  <Link
+                  <IntentLink
                     key={f.hash}
                     href={`/explorer/tx/${f.hash}`}
                     className={cn(
@@ -669,7 +673,7 @@ export default async function LitPage() {
                     <Figure className="truncate text-[11px] text-ink-3">
                       {hash(f.hash, 8, 6)}
                     </Figure>
-                  </Link>
+                  </IntentLink>
                 ))}
               </div>
             </div>

@@ -6,6 +6,7 @@ import {
 import { FundingClock } from "@/components/terminal/funding-clock";
 import { IntentLink } from "@/components/terminal/intent-link";
 import { Movers } from "@/components/terminal/movers";
+import { PageHead } from "@/components/terminal/page-head";
 import {
   AsOf,
   Figure,
@@ -21,9 +22,9 @@ import { num, usdCompact } from "@/lib/format";
 export const revalidate = 15;
 
 export const metadata: Metadata = {
-  title: "Markets",
+  title: "Lighter Markets — Prices, Open Interest & Volume",
   description:
-    "Every Lighter market — open interest, mark against index, day range, funding and max leverage, with the day's biggest movers. Crypto, equities, indices, commodities and FX.",
+    "Every Lighter perpetual market — mark price against index, open interest, 24h volume, day range, funding and max leverage, with the day's biggest movers. Crypto, equities, indices, commodities and FX.",
   alternates: { canonical: "/markets" },
 };
 
@@ -67,7 +68,10 @@ export default async function MarketsPage() {
 
   return (
     <div>
-      <h1 className="sr-only">Lighter markets</h1>
+      <PageHead
+        title="Lighter markets"
+        note="Every perpetual on Lighter, priced live — open interest, volume, funding and leverage."
+      />
 
       {/* ── summary band ───────────────────────────────────── */}
       <div className="grid border-b border-line bg-panel lg:grid-cols-[300px_minmax(0,1fr)_300px]">

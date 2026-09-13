@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { Sparkline } from "@/components/terminal/charts";
 import {
@@ -39,13 +39,14 @@ import {
   usdCompact,
   usdSignedCompact,
 } from "@/lib/format";
+import { PageHead } from "@/components/terminal/page-head";
 
 export const revalidate = 15;
 
 export const metadata: Metadata = {
-  title: "Overview",
+  title: "Lighter Exchange Stats — Volume, Open Interest & Fees",
   description:
-    "Live open interest, volume, fees, capital flows, account growth, market share and breadth across every Lighter market.",
+    "Lighter exchange stats — live open interest, 24h volume, fees, capital flows, account growth, market share and breadth across every market.",
   alternates: { canonical: "/overview" },
 };
 
@@ -124,7 +125,10 @@ export default async function OverviewPage() {
 
   return (
     <div>
-      <h1 className="sr-only">Lighter exchange overview</h1>
+      <PageHead
+        title="Lighter exchange overview"
+        note="Open interest, volume, fees, capital flows and account growth across every market."
+      />
 
       {/* ── hero band ──────────────────────────────────────── */}
       <div className="grid border-b border-line bg-panel lg:grid-cols-[404px_minmax(0,1fr)]">
@@ -302,12 +306,12 @@ export default async function OverviewPage() {
           {/* markets */}
           <div className="border-b border-line p-5">
             <SectionHeader title="Markets" note="by open interest">
-              <Link
+              <IntentLink
                 href="/markets"
                 className="figure ctl -my-1.5 py-1.5 text-[11px] text-ink-3 hover:text-ink"
               >
                 All {o.summary.count} →
-              </Link>
+              </IntentLink>
             </SectionHeader>
 
             <div className="overflow-x-auto">
@@ -324,7 +328,7 @@ export default async function OverviewPage() {
                   <span className="text-right">Day range</span>
                 </div>
                 {top.map((m) => (
-                  <Link
+                  <IntentLink
                     key={m.marketId}
                     href={`/markets/${m.symbol}`}
                     className={`row-hit grid items-center gap-x-4 border-b border-hair py-2.5 last:border-0 ${MARKET_COLS}`}
@@ -381,7 +385,7 @@ export default async function OverviewPage() {
                         {compact(m.dayHigh, 1)}
                       </Figure>
                     </span>
-                  </Link>
+                  </IntentLink>
                 ))}
               </div>
             </div>
@@ -559,12 +563,12 @@ export default async function OverviewPage() {
                           aria-hidden="true"
                         />
                         {r.href ? (
-                          <Link
+                          <IntentLink
                             href={r.href}
                             className="truncate text-[12px] font-semibold hover:underline hover:decoration-edge hover:underline-offset-4"
                           >
                             {r.label}
-                          </Link>
+                          </IntentLink>
                         ) : (
                           <span className="truncate text-[12px] text-ink-3">{r.label}</span>
                         )}
@@ -620,7 +624,7 @@ export default async function OverviewPage() {
                     <div key={label}>
                       <Label className="mb-1.5">{label}</Label>
                       {list.map((x) => (
-                        <Link
+                        <IntentLink
                           key={x.id}
                           href={`/markets/${x.symbol}`}
                           className="row-hit grid grid-cols-[minmax(0,1fr)_64px_56px] items-baseline gap-x-2 border-t border-hair py-1.5"
@@ -635,7 +639,7 @@ export default async function OverviewPage() {
                           </span>
                           <Figure className="text-right text-[11px] text-ink-3">{usdCompact(x.oi, 1)}</Figure>
                           <Delta value={x.d24h} glyph={false} decimals={1} className="text-right text-[11.5px]" />
-                        </Link>
+                        </IntentLink>
                       ))}
                     </div>
                   ),
@@ -652,16 +656,16 @@ export default async function OverviewPage() {
 
           <div className="p-5">
             <SectionHeader title="Top traders · 24h" note="by PnL">
-              <Link
+              <IntentLink
                 href="/leaderboard"
                 className="figure ctl -my-1.5 py-1.5 text-[11px] text-ink-3 hover:text-ink"
               >
                 All →
-              </Link>
+              </IntentLink>
             </SectionHeader>
             <div className="flex flex-col">
               {o.leaders.map((e) => (
-                <Link
+                <IntentLink
                   key={e.address}
                   href={`/a/${e.address}`}
                   className="row-hit grid grid-cols-[18px_minmax(0,1fr)_84px_52px] items-center border-t border-hair py-2"
@@ -681,7 +685,7 @@ export default async function OverviewPage() {
                     decimals={1}
                     className="text-right text-[10.5px]"
                   />
-                </Link>
+                </IntentLink>
               ))}
             </div>
           </div>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { FundingClock } from "@/components/terminal/funding-clock";
 import { FundingTable } from "@/components/terminal/funding-table";
@@ -18,11 +18,12 @@ import {
 } from "@/lib/funding-board";
 import { aprPct, num, ratePct } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PageHead } from "@/components/terminal/page-head";
 
 export const revalidate = 30;
 
 export const metadata: Metadata = {
-  title: "Funding",
+  title: "Lighter Funding Rates vs Binance, Bybit & Hyperliquid",
   description:
     "Lighter funding rates against Binance, Bybit and Hyperliquid for every market — the widest spreads, annualised, on one 8-hour basis.",
   alternates: { canonical: "/funding" },
@@ -65,7 +66,10 @@ export default async function FundingPage() {
 
   return (
     <div>
-      <h1 className="sr-only">Funding rates: Lighter against Binance, Bybit and Hyperliquid</h1>
+      <PageHead
+        title="Lighter funding rates"
+        note="Against Binance, Bybit and Hyperliquid for every market, on one 8-hour basis."
+      />
 
       {/* ── stat band ──────────────────────────────────────── */}
       <div className="grid border-b border-line bg-panel lg:grid-cols-[400px_minmax(0,1fr)]">
@@ -78,12 +82,12 @@ export default async function FundingPage() {
             sub={
               widest ? (
                 <span>
-                  <Link
+                  <IntentLink
                     href={`/markets/${widest.row.symbol}`}
                     className="-mx-1 px-1 py-1 text-ink underline decoration-edge underline-offset-4 hover:decoration-ink-3"
                   >
                     {widest.row.symbol}
-                  </Link>{" "}
+                  </IntentLink>{" "}
                   · vs {VENUE_LABEL[widest.best!.venue]} · books over $1M OI
                 </span>
               ) : undefined

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import {
   AsOf,
@@ -22,9 +22,9 @@ import { cn } from "@/lib/utils";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Leaderboard",
+  title: "Lighter Leaderboard — Top Traders by PnL",
   description:
-    "Every Lighter account ranked by PnL, return, volume or account value — over 24 hours, a week, a month or all time.",
+    "The Lighter leaderboard: every account ranked by PnL, return, volume or account value — over 24 hours, a week, a month or all time.",
   alternates: { canonical: "/leaderboard" },
 };
 
@@ -77,7 +77,7 @@ export default async function LeaderboardPage({
           <Label>Window</Label>
           <div className="flex gap-1">
             {LEADER_WINDOWS.map((w) => (
-              <Link
+              <IntentLink
                 key={w}
                 href={href(w, sort)}
                 aria-current={w === window ? "true" : undefined}
@@ -89,7 +89,7 @@ export default async function LeaderboardPage({
                 )}
               >
                 {WINDOW_LABEL[w]}
-              </Link>
+              </IntentLink>
             ))}
           </div>
         </div>
@@ -98,7 +98,7 @@ export default async function LeaderboardPage({
           <Label>Rank by</Label>
           <div className="flex gap-1">
             {LEADER_SORTS.map((s) => (
-              <Link
+              <IntentLink
                 key={s.key}
                 href={href(window, s.key)}
                 aria-current={s.key === sort ? "true" : undefined}
@@ -110,7 +110,7 @@ export default async function LeaderboardPage({
                 )}
               >
                 {s.label}
-              </Link>
+              </IntentLink>
             ))}
           </div>
         </div>
@@ -129,7 +129,7 @@ export default async function LeaderboardPage({
           </div>
 
           {entries.map((e) => (
-            <Link
+            <IntentLink
               key={`${e.rank}-${e.address}`}
               href={`/a/${e.address}`}
               className={cn(
@@ -165,7 +165,7 @@ export default async function LeaderboardPage({
               <Figure className="text-right text-[13px] text-ink-2">
                 {usd(e.volume)}
               </Figure>
-            </Link>
+            </IntentLink>
           ))}
 
           {entries.length === 0 && (

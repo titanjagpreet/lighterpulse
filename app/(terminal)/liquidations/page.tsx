@@ -19,13 +19,14 @@ import { getDaily } from "@/lib/lighter/metrics";
 import { getMarkets } from "@/lib/lighter/markets";
 import { DAY_MS, sumDays } from "@/lib/series";
 import { dayLabel, num, usdCompact } from "@/lib/format";
+import { PageHead } from "@/components/terminal/page-head";
 
 export const revalidate = 30;
 
 export const metadata: Metadata = {
-  title: "Liquidations",
+  title: "Lighter Liquidations — Live Tape & History",
   description:
-    "Liquidation volume and counts across Lighter since genesis, plus a live tape of every forced exit as it happens.",
+    "Lighter liquidations — a live tape of every forced exit as it happens, plus daily liquidation volume, counts and fees since genesis.",
   alternates: { canonical: "/liquidations" },
 };
 
@@ -65,7 +66,10 @@ export default async function LiquidationsPage() {
 
   return (
     <div>
-      <h1 className="sr-only">Liquidations on Lighter</h1>
+      <PageHead
+        title="Lighter liquidations"
+        note="Every forced exit since genesis, and a live tape as they happen."
+      />
 
       {/* ── stat band ──────────────────────────────────────── */}
       <div className="grid border-b border-line bg-panel lg:grid-cols-[360px_minmax(0,1fr)]">

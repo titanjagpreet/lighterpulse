@@ -26,13 +26,15 @@ import { partToDaily } from "@/lib/oi";
 import { LLP_INDEX, LLP_USDC_PER_STAKED_LIT } from "@/lib/pools";
 import { DAY_MS, lastDays } from "@/lib/series";
 import { dayLabel, usdCompact } from "@/lib/format";
+import { breadcrumbs } from "@/lib/site";
+import { JsonLd } from "@/components/json-ld";
 
 export const revalidate = 120;
 
 export const metadata: Metadata = {
-  title: "LLP & vaults",
+  title: "Lighter LLP — APY, TVL & Public Vaults",
   description:
-    "Lighter's Liquidity Provider — TVL, share-price returns, Sharpe, drawdowns, what it holds and the liquidation fees behind it — plus every public vault ranked by TVL.",
+    "Lighter's Liquidity Provider (LLP) — TVL, share-price returns, Sharpe, drawdowns, what it holds and the liquidation fees behind it — plus every public vault ranked by TVL and APY.",
   alternates: { canonical: "/llp" },
 };
 
@@ -119,6 +121,8 @@ export default async function LlpPage() {
 
   return (
     <div>
+      <JsonLd data={breadcrumbs([["LLP & vaults", "/llp"]])} />
+
       {/* ── identity ───────────────────────────────────────── */}
       <div className="border-b border-line bg-panel px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
