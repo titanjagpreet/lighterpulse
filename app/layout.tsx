@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -18,13 +19,12 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lighterpulse.xyz"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "LighterPulse — the Lighter terminal",
+    default: "LighterPulse — Lighter DEX Analytics, Funding Rates & Explorer",
     template: "%s · LighterPulse",
   },
-  description:
-    "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter — open interest, buybacks and live positions across every market.",
+  description: SITE_DESCRIPTION,
   keywords: [
     "lighter",
     "lighter.xyz",
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
     "LIT token",
     "zkLighter",
   ],
-  authors: [{ name: "LighterPulse" }],
-  creator: "LighterPulse",
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
   robots: {
     index: true,
     follow: true,
@@ -51,22 +51,18 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+  // No title, description or url here. Set at the root, every page inherited
+  // them, so each shared link previewed as the home page; left out, Next fills
+  // them in from each page's own title and description.
   openGraph: {
     type: "website",
-    url: "https://lighterpulse.xyz",
-    siteName: "LighterPulse",
+    siteName: SITE_NAME,
     locale: "en_US",
-    title: "LighterPulse — the Lighter terminal",
-    description:
-      "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter.",
   },
   twitter: {
     card: "summary_large_image",
     site: "@singhxbt",
     creator: "@singhxbt",
-    title: "LighterPulse — the Lighter terminal",
-    description:
-      "Live markets, funding across venues, liquidations, trader leaderboards and a full block explorer for Lighter.",
   },
   category: "Finance",
 };

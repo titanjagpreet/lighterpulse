@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getBlock, getExplorerBlocks } from "@/lib/lighter/explorer";
@@ -17,7 +17,8 @@ export async function generateMetadata({
   return {
     title: `Block ${height}`,
     description: `Block ${height} on the Lighter zk-rollup — transactions, batch and L1 settlement status.`,
-    alternates: { canonical: `/explorer/block/${height}` },
+    // One page per block, without end: worth opening, not worth indexing.
+    robots: { index: false, follow: true },
   };
 }
 
@@ -60,26 +61,26 @@ export default async function BlockPage({
       </dl>
 
       <div className="mt-7 flex gap-2.5">
-        <Link
+        <IntentLink
           href={`/explorer/block/${b.height - 1}`}
           className="figure ctl rounded-[4px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink-2 hover:text-ink"
         >
           ← Previous
-        </Link>
+        </IntentLink>
         {(tip == null || b.height < tip) && (
-          <Link
+          <IntentLink
             href={`/explorer/block/${b.height + 1}`}
             className="figure ctl rounded-[4px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink-2 hover:text-ink"
           >
             Next →
-          </Link>
+          </IntentLink>
         )}
-        <Link
+        <IntentLink
           href="/explorer"
           className="figure ctl rounded-[4px] px-3.5 py-1.5 text-[11.5px] text-ink-3 hover:text-ink"
         >
           Explorer
-        </Link>
+        </IntentLink>
       </div>
     </div>
   );

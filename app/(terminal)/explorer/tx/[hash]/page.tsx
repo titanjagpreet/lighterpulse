@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/terminal/intent-link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTx } from "@/lib/lighter/explorer";
@@ -17,7 +17,8 @@ export async function generateMetadata({
   return {
     title: `Transaction ${shortHash(hash)}`,
     description: `Lighter transaction ${shortHash(hash)} — type, time and decoded payload.`,
-    alternates: { canonical: `/explorer/tx/${hash}` },
+    // One page per transaction, without end: worth opening, not worth indexing.
+    robots: { index: false, follow: true },
   };
 }
 
@@ -78,12 +79,12 @@ export default async function TxPage({
       )}
 
       <div className="mt-7">
-        <Link
+        <IntentLink
           href="/explorer"
           className="figure ctl rounded-[4px] border border-edge px-3.5 py-1.5 text-[11.5px] text-ink-2 hover:text-ink"
         >
           ← Explorer
-        </Link>
+        </IntentLink>
       </div>
     </div>
   );

@@ -24,6 +24,24 @@ const nextConfig: NextConfig = {
   },
 
   /**
+   * Pages rendered per request — the leaderboard, wallets, vaults, explorer
+   * detail — stream their title, description and canonical into <body> for
+   * any client Next expects to run JavaScript, Googlebot included. Google only
+   * honours a canonical in <head>, so these crawlers get blocking metadata.
+   * Setting this replaces Next's default list, which is kept in full first.
+   */
+  htmlLimitedBots: new RegExp(
+    [
+      // Next's default (next/dist/shared/lib/router/utils/html-bots)
+      "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight",
+      "Googlebot",
+      // AI search crawlers, which read the HTML without running it
+      "OAI-SearchBot|ChatGPT-User|GPTBot|PerplexityBot|ClaudeBot|Claude-SearchBot|Claude-User",
+    ].join("|"),
+    "i",
+  ),
+
+  /**
    * The revamp renamed several routes. These keep old links, bookmarks and
    * search results working instead of dropping them on a 404.
    */

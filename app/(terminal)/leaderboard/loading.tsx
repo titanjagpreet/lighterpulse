@@ -8,7 +8,9 @@ export default function LeaderboardLoading() {
     <div aria-busy="true" aria-label="Loading leaderboard">
       <div className="flex flex-wrap items-end gap-x-10 gap-y-5 border-b border-line px-5 py-5">
         <div>
-          <h1 className="mb-1.5 text-[24px] font-semibold tracking-[-0.02em]">Leaderboard</h1>
+          {/* Not an h1: the page's own heading replaces it, and a crawler
+              reading the streamed HTML would otherwise find two. */}
+          <div className="mb-1.5 text-[24px] font-semibold tracking-[-0.02em]">Leaderboard</div>
           <p className="figure text-[11.5px] text-ink-4">Ranking accounts…</p>
         </div>
       </div>
