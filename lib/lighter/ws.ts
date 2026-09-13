@@ -25,12 +25,21 @@ export type WsMessage = Record<string, unknown> & {
 type Handler = (msg: WsMessage) => void;
 export type WsStatus = "connecting" | "open" | "closed";
 
+export interface SubscribeOptions {
+  /**
+   * Ask the server to batch this channel's updates into one message per
+   * interval, in milliseconds — what Lighter's own client does for stats.
+   */
+  flushInterval?: number;
+}
+
 const PING_MS = 25_000;
 const MAX_BACKOFF = 30_000;
 
 class LighterSocket {
   private ws: WebSocket | null = null;
   private handlers = new Map<string, Set<Handler>>();
+  private options = new Map<string, SubscribeOptions>();
   private statusWatchers = new Set<(s: WsStatus) => void>();
   private attempts = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -135,8 +144,11 @@ class LighterSocket {
 
   private send(channel: string, type: "subscribe" | "unsubscribe") {
     if (this.ws?.readyState !== 1) return;
+    const message: Record<string, string> = { type, channel };
+    const flush = type === "subscribe" ? this.options.get(channel)?.flushInterval : undefined;
+    if (flush && flush > 0) message.flush_interval = String(Math.round(flush));
     try {
-      this.ws.send(JSON.stringify({ type, channel }));
+      this.ws.send(JSON.stringify(message));
     } catch {
       /* reconnect will re-subscribe */
     }
@@ -153,7 +165,8 @@ class LighterSocket {
     this.send(channel, "subscribe");
   }
 
-  subscribe(channel: string, handler: Handler): () => void {
+  subscribe(channel: string, handler: Handler, options?: SubscribeOptions): () => void {
+    if (options) this.options.set(channel, options);
     let set = this.handlers.get(channel);
     if (!set) {
       set = new Set();
@@ -177,6 +190,7 @@ class LighterSocket {
       s.delete(handler);
       if (s.size === 0) {
         this.handlers.delete(channel);
+        this.options.delete(channel);
         this.snapshotted.delete(channel);
         this.send(channel, "unsubscribe");
       }

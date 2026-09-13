@@ -1,4 +1,5 @@
 import { API_BASE_PUBLIC } from "./public";
+import { displayPrice, displaySize } from "./multiplier";
 import { hourlyPctToEightHour, n } from "../format";
 
 /**
@@ -8,6 +9,9 @@ import { hourlyPctToEightHour, n } from "../format";
  * its limits are per IP — so a market page costs our server nothing, however
  * many of its 233 pages get crawled or opened. The server renders the stats
  * it already holds; the charts load here.
+ *
+ * Prices and base sizes arrive in real units and are converted to display
+ * units on the way in.
  */
 
 const TIMEOUT_MS = 10_000;
@@ -118,11 +122,11 @@ export function fetchCandles(marketId: number, tf: Timeframe): Promise<Candle[]>
     return (res.c ?? [])
       .map((k) => ({
         t: n(k.t),
-        o: n(k.o),
-        h: n(k.h),
-        l: n(k.l),
-        c: n(k.c),
-        v: n(k.v),
+        o: displayPrice(marketId, n(k.o)),
+        h: displayPrice(marketId, n(k.h)),
+        l: displayPrice(marketId, n(k.l)),
+        c: displayPrice(marketId, n(k.c)),
+        v: displaySize(marketId, n(k.v)),
         usd: n(k.V),
       }))
       .filter((k) => k.t > 0 && k.c > 0)
@@ -174,7 +178,9 @@ export function fetchFundingHistory(
         return {
           t: n(f.timestamp) * 1000,
           rate: hourlyPctToEightHour(sign * n(f.rate)),
-          perUnit: sign * n(f.value),
+          // USD per real unit; a display unit is a fraction of one, so the
+          // payment scales the way a price does.
+          perUnit: displayPrice(marketId, sign * n(f.value)),
         };
       })
       .sort((a, b) => a.t - b.t);
@@ -191,7 +197,10 @@ export function fetchPriceCharts(): Promise<Record<number, number[]>> {
     }>("marketPriceCharts", {});
     const out: Record<number, number[]> = {};
     for (const c of res.price_charts ?? []) {
-      const prices = (c.prices ?? []).map((p) => n(p)).filter((v) => v > 0);
+      const prices = (c.prices ?? [])
+        .map((p) => n(p))
+        .filter((v) => v > 0)
+        .map((v) => displayPrice(c.market_id, v));
       if (prices.length > 1) out[c.market_id] = prices;
     }
     return out;

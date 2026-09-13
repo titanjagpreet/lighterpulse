@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { lighterSocket } from "./ws";
+import { displayPrice, displaySize } from "./multiplier";
 import { n } from "../format";
 
 /**
@@ -61,7 +62,8 @@ export function useOrderBook(
 
   useEffect(() => {
     if (marketId == null) return;
-    const channel = `order_book/${marketId}`;
+    const id = marketId;
+    const channel = `order_book/${id}`;
     const sock = lighterSocket();
     bids.current.clear();
     asks.current.clear();
@@ -70,8 +72,8 @@ export function useOrderBook(
 
     const apply = (side: Map<number, number>, levels: RawLevel[] | undefined) => {
       for (const l of levels ?? []) {
-        const price = n(l.price);
-        const size = n(l.size);
+        const price = displayPrice(id, n(l.price));
+        const size = displaySize(id, n(l.size));
         if (price <= 0) continue;
         if (size <= 0) side.delete(price);
         else side.set(price, size);

@@ -8,13 +8,13 @@ export { OI_SIDES };
 
 /**
  * Markets, built from `orderBookDetails` — a strict superset of the
- * `exchangeStats` endpoint the old site used. Asset class is joined in from
- * `tokenlist`, and the current funding rate from `funding-rates`.
+ * `exchangeStats` endpoint the old site used. Asset class and icon are joined
+ * in from `tokenlist`, and the current funding rate from `funding-rates`.
  */
 
 /* ── raw upstream shapes ─────────────────────────────────────── */
 
-interface RawOrderBook {
+export interface RawOrderBook {
   symbol: string;
   market_id: number;
   status: string;
@@ -32,12 +32,16 @@ interface RawOrderBook {
   maintenance_margin_fraction: number;
   maker_fee: string;
   taker_fee: string;
+  /** Real-to-display unit factor. See lighter/multiplier. */
+  multiplier?: string | number;
 }
 
 interface RawToken {
   symbol: string;
   asset_type?: string;
   categories?: string[];
+  logo?: string;
+  logo_extension?: string;
 }
 
 
@@ -58,6 +62,13 @@ function classify(token: RawToken | undefined): AssetClass {
   if (c.has("ETF")) return "index";
   // STOCK, PRE_IPO, KRW, or only a NEW tag — all equities in practice.
   return "equity";
+}
+
+/** Lighter's own token icons, on the URL scheme its open-source client uses. */
+const TOKEN_ICON_BASE = "https://assets.lighter.xyz/fe/token";
+
+function tokenIcon(token: RawToken | undefined): string | null {
+  return token?.logo ? `${TOKEN_ICON_BASE}/${token.logo}.${token.logo_extension || "svg"}` : null;
 }
 
 /* ── cached primitives ───────────────────────────────────────── */
@@ -135,10 +146,17 @@ export async function getMarkets(): Promise<Cached<Market[]>> {
   }
 
   const markets: Market[] = books.data.map((m) => {
-    const markPrice = n(m.mark_price);
-    const oiBase = n(m.open_interest);
-    const dayLow = n(m.daily_price_low);
-    const dayHigh = n(m.daily_price_high);
+    const token = tokenMap[m.symbol];
+    // Prices and sizes arrive in real units. Every market today has a
+    // multiplier of 1; converting anyway keeps a future one readable.
+    const multiplier = Number(m.multiplier) > 0 ? Number(m.multiplier) : 1;
+    const price = (v: unknown) => n(v) / multiplier;
+    const size = (v: unknown) => n(v) * multiplier;
+
+    const markPrice = price(m.mark_price);
+    const oiBase = size(m.open_interest);
+    const dayLow = price(m.daily_price_low);
+    const dayHigh = price(m.daily_price_high);
     const span = dayHigh - dayLow;
 
     return {
@@ -146,18 +164,19 @@ export async function getMarkets(): Promise<Cached<Market[]>> {
       marketId: m.market_id,
       status: m.status,
       active: m.status === "active",
-      assetClass: classify(tokenMap[m.symbol]),
+      assetClass: classify(token),
 
       markPrice,
-      indexPrice: n(m.index_price),
-      lastPrice: n(m.last_trade_price),
+      indexPrice: price(m.index_price),
+      lastPrice: price(m.last_trade_price),
       change24h: n(m.daily_price_change),
 
       oiBase,
+      // Size × price — the multiplier cancels, so this is USD either way.
       oiUsd: oiBase * markPrice * OI_SIDES,
 
       volume24h: n(m.daily_quote_token_volume),
-      volume24hBase: n(m.daily_base_token_volume),
+      volume24hBase: size(m.daily_base_token_volume),
       trades24h: n(m.daily_trades_count),
 
       dayLow,
@@ -175,6 +194,9 @@ export async function getMarkets(): Promise<Cached<Market[]>> {
       maintenanceMarginFraction: n(m.maintenance_margin_fraction),
 
       funding: lighterFunding.get(m.market_id) ?? null,
+
+      multiplier,
+      icon: tokenIcon(token),
     };
   });
 

@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { lighterSocket } from "./ws";
+import { displayPrice, displaySize } from "./multiplier";
 import { hourlyPctToEightHour, n } from "../format";
 import { OI_SIDES } from "./types";
 
 /** Live market state is applied to the page at most this often. */
 const FLUSH_MS = 1000;
+/** The server is asked to batch its updates to the same rhythm. */
+const SERVER_FLUSH_MS = 1000;
 
 /**
  * Live market state for every market, from one `market_stats/all`
@@ -25,6 +28,7 @@ const FLUSH_MS = 1000;
  *     the product's convention is an 8-hour ratio (0.000096), which is what
  *     `funding-rates` returns. Merging the raw value used to inflate the
  *     funding column 12.5× the moment the socket connected.
+ * Prices and base sizes are also converted from real to display units.
  */
 
 export interface LiveMarket {
@@ -62,17 +66,19 @@ export function useMarketStats(): {
     const sock = lighterSocket();
     const offStatus = sock.onStatus((s) => setLive(s === "open"));
 
-    // The stream sends several messages a second. Rendering on each one kept
-    // the markets table re-rendering so often that a click on a row started a
-    // navigation that never got the idle moment it needed to commit. Messages
-    // are buffered and applied together, at most once per FLUSH_MS; the first
-    // batch — the snapshot — is applied at once.
+    // The stream can send several messages a second. Rendering on each one
+    // kept the markets table re-rendering so often that a click on a row
+    // started a navigation that never got the idle moment it needed to
+    // commit. The server batches to about one message a second; messages are
+    // also buffered here and applied at most once per FLUSH_MS, the first at
+    // once, so a server that ignores the batching cannot bring the stall back.
     let pending: Record<string, Record<string, unknown>>[] = [];
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let first = true;
+    let lastFlush = 0;
 
     const flush = () => {
       timer = null;
+      lastFlush = Date.now();
       const batch = pending;
       pending = [];
       if (batch.length === 0) return;
@@ -84,24 +90,32 @@ export function useMarketStats(): {
           for (const [id, s] of Object.entries(raw)) {
             const marketId = n(s.market_id, Number(id));
             const e = next.get(marketId);
+            const px = (v: unknown, prev: number | undefined) => {
+              const x = n(v, NaN);
+              return Number.isFinite(x) ? displayPrice(marketId, x) : (prev ?? 0);
+            };
+            const sz = (v: unknown, prev: number | undefined) => {
+              const x = n(v, NaN);
+              return Number.isFinite(x) ? displaySize(marketId, x) : (prev ?? 0);
+            };
             next.set(marketId, {
               marketId,
               symbol: typeof s.symbol === "string" ? s.symbol : (e?.symbol ?? ""),
-              markPrice: n(s.mark_price, e?.markPrice ?? 0),
-              indexPrice: n(s.index_price, e?.indexPrice ?? 0),
-              lastPrice: n(s.last_trade_price, e?.lastPrice ?? 0),
-              midPrice: n(s.mid_price, e?.midPrice ?? 0),
-              bestBid: n(s.best_bid_price, e?.bestBid ?? 0),
-              bestAsk: n(s.best_ask_price, e?.bestAsk ?? 0),
+              markPrice: px(s.mark_price, e?.markPrice),
+              indexPrice: px(s.index_price, e?.indexPrice),
+              lastPrice: px(s.last_trade_price, e?.lastPrice),
+              midPrice: px(s.mid_price, e?.midPrice),
+              bestBid: px(s.best_bid_price, e?.bestBid),
+              bestAsk: px(s.best_ask_price, e?.bestAsk),
               change24h: n(s.daily_price_change, e?.change24h ?? 0),
               oiUsd:
                 s.open_interest != null
                   ? n(s.open_interest) * OI_SIDES
                   : (e?.oiUsd ?? 0),
               volume24h: n(s.daily_quote_token_volume, e?.volume24h ?? 0),
-              volume24hBase: n(s.daily_base_token_volume, e?.volume24hBase ?? 0),
-              dayLow: n(s.daily_price_low, e?.dayLow ?? 0),
-              dayHigh: n(s.daily_price_high, e?.dayHigh ?? 0),
+              volume24hBase: sz(s.daily_base_token_volume, e?.volume24hBase),
+              dayLow: px(s.daily_price_low, e?.dayLow),
+              dayHigh: px(s.daily_price_high, e?.dayHigh),
               funding:
                 s.current_funding_rate != null
                   ? hourlyPctToEightHour(n(s.current_funding_rate))
@@ -118,17 +132,20 @@ export function useMarketStats(): {
       setTick((t) => t + 1);
     };
 
-    const off = sock.subscribe("market_stats/all", (msg) => {
-      const raw = msg.market_stats as
-        | Record<string, Record<string, unknown>>
-        | undefined;
-      if (!raw) return;
-      pending.push(raw);
-      if (timer == null) {
-        timer = setTimeout(flush, first ? 0 : FLUSH_MS);
-        first = false;
-      }
-    });
+    const off = sock.subscribe(
+      "market_stats/all",
+      (msg) => {
+        const raw = msg.market_stats as
+          | Record<string, Record<string, unknown>>
+          | undefined;
+        if (!raw) return;
+        pending.push(raw);
+        if (timer == null) {
+          timer = setTimeout(flush, Math.max(0, lastFlush + FLUSH_MS - Date.now()));
+        }
+      },
+      { flushInterval: SERVER_FLUSH_MS },
+    );
 
     return () => {
       off();

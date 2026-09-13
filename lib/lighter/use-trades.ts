@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { lighterSocket } from "./ws";
+import { displayPrice, displaySize } from "./multiplier";
 import { n } from "../format";
 
 /**
@@ -35,12 +36,13 @@ export function useTrades(
 
   useEffect(() => {
     if (marketId == null) return;
+    const id = marketId;
     const sock = lighterSocket();
     seen.current = new Set();
     setTrades([]);
     const offStatus = sock.onStatus((s) => setLive(s === "open"));
 
-    const off = sock.subscribe(`trade/${marketId}`, (msg) => {
+    const off = sock.subscribe(`trade/${id}`, (msg) => {
       const list = Array.isArray(msg.trades) ? (msg.trades as Record<string, unknown>[]) : [];
       const liqs = Array.isArray(msg.liquidation_trades)
         ? (msg.liquidation_trades as Record<string, unknown>[])
@@ -52,18 +54,18 @@ export function useTrades(
       const incoming: TapeTrade[] = [];
 
       for (const raw of [...list, ...liqs]) {
-        const id = String(raw.trade_id_str ?? raw.trade_id ?? "");
-        if (!id || seen.current.has(id)) continue;
-        seen.current.add(id);
+        const tradeId = String(raw.trade_id_str ?? raw.trade_id ?? "");
+        if (!tradeId || seen.current.has(tradeId)) continue;
+        seen.current.add(tradeId);
         incoming.push({
-          id,
-          price: n(raw.price),
-          size: n(raw.size),
+          id: tradeId,
+          price: displayPrice(id, n(raw.price)),
+          size: displaySize(id, n(raw.size)),
           usd: n(raw.usd_amount),
           side: raw.is_maker_ask === true ? "buy" : "sell",
           t: n(raw.timestamp, Date.now()),
           fresh,
-          liquidation: liqIds.has(id),
+          liquidation: liqIds.has(tradeId),
         });
       }
       if (incoming.length === 0) return;

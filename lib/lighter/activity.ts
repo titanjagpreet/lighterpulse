@@ -1,4 +1,5 @@
 import { n } from "../format";
+import { displayPrice, displaySize } from "./multiplier";
 import { EXPLORER_BASE_PUBLIC } from "./public";
 
 /**
@@ -126,9 +127,12 @@ export function parseLog(raw: RawLog, account: number): ActivityRow | null {
           : null;
     row.counterparty = row.role === "taker" ? maker : row.role === "maker" ? taker : null;
     row.marketId = index(b.market_index);
-    row.price = num(b.price);
-    row.size = num(b.size);
-    row.amount = row.price != null && row.size != null ? row.price * row.size : null;
+    // Real units on the wire; the notional is the same in either.
+    const price = num(b.price);
+    const size = num(b.size);
+    row.price = price != null ? displayPrice(row.marketId, price) : null;
+    row.size = size != null ? displaySize(row.marketId, size) : null;
+    row.amount = price != null && size != null ? price * size : null;
     row.asset = "USDC";
     row.kind = /liquidat|deleverag/i.test(type) ? "liquidation" : "trade";
     return row;

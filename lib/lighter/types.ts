@@ -69,6 +69,11 @@ export interface Market {
 
   /** Current 8h funding rate as a ratio, merged from funding-rates. */
   funding: number | null;
+
+  /** Wire-to-display unit factor — 1 for every market today. See lighter/multiplier. */
+  multiplier: number;
+  /** The token's icon on Lighter's CDN, when the token list has one. */
+  icon: string | null;
 }
 
 export interface MetricPoint {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { lighterSocket } from "./ws";
+import { displayPrice, displaySize } from "./multiplier";
 import { n } from "../format";
 
 /**
@@ -99,8 +100,8 @@ export function useLiquidationFeed(
             // the ask, the taker was buying — a short being closed out.
             side: raw.is_maker_ask === true ? "short" : "long",
             usd: n(raw.usd_amount),
-            price: n(raw.price),
-            size: n(raw.size),
+            price: displayPrice(marketId, n(raw.price)),
+            size: displaySize(marketId, n(raw.size)),
             t,
             fresh: isUpdate || t >= openedAt,
           });
