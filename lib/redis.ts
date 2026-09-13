@@ -1,18 +1,47 @@
-// lib/redis.ts
+import "server-only";
 import { Redis } from "@upstash/redis";
 
 /**
- * Server-side only Redis client for Upstash.
- * Only import this file from server code (api routes, server components).
+ * Upstash client. Server-only.
+ *
+ * Deliberately nullable: if the credentials are absent (local dev, preview
+ * without secrets) every caller degrades to fetching upstream directly rather
+ * than crashing. The cache is a performance and rate-limit layer, not a
+ * correctness dependency.
  */
 
-if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-  // Don't throw during import in dev environments where you purposely run without env,
-  // but log so debugging is easier. You can throw if you prefer.
-  console.warn("Upstash env variables not set: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN");
+const url = process.env.UPSTASH_REDIS_REST_URL;
+const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+export const redis: Redis | null =
+  url && token ? new Redis({ url, token }) : null;
+
+if (!redis && process.env.NODE_ENV !== "production") {
+  console.warn(
+    "[redis] UPSTASH_REDIS_REST_URL / _TOKEN not set — cache disabled, " +
+      "every request will hit upstream directly.",
+  );
 }
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL as string,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN as string,
-});
+/**
+ * Sliding-window rate limiter backed by a Redis counter.
+ * Used to protect the explorer host, which has a hard 90 weighted req/min
+ * ceiling shared across every user of this site.
+ *
+ * Fails OPEN: if Redis is unavailable we allow the request rather than
+ * breaking search entirely.
+ */
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<{ ok: boolean; remaining: number }> {
+  if (!redis) return { ok: true, remaining: limit };
+  try {
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, windowSeconds);
+    return { ok: count <= limit, remaining: Math.max(0, limit - count) };
+  } catch {
+    return { ok: true, remaining: limit };
+  }
+}

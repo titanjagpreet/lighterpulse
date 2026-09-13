@@ -1,13 +1,17 @@
-import NotFound from "@/components/reactbits/NotFound";
+import type { Metadata } from "next";
+import { StatusScreen } from "@/components/terminal/status-screen";
 
-export default function NotFoundPage() {
+export const metadata: Metadata = {
+  title: "Not found",
+  robots: { index: false, follow: false },
+};
+
+export default function NotFound() {
   return (
-    <NotFound
-      title="Page Not Found"
-      description="The page you're looking for doesn't exist or has been moved. Let's get you back on track!"
-      showBackButton={true}
-      showHomeButton={true}
-      showSearchButton={true}
+    <StatusScreen
+      code="404"
+      title="No such page"
+      detail="That route doesn't exist. If you were looking for an account, paste the address into the search bar on any terminal screen."
     />
   );
 }

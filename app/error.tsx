@@ -1,6 +1,7 @@
 "use client";
+
 import { useEffect } from "react";
-import NotFound from "@/components/reactbits/NotFound";
+import { StatusScreen } from "@/components/terminal/status-screen";
 
 export default function Error({
   error,
@@ -10,17 +11,23 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error("Application error:", error);
+    console.error("[lighterpulse] render error", error);
   }, [error]);
 
   return (
-    <NotFound
-      title="Something went wrong!"
-      description="An unexpected error occurred. Please try again or contact support if the problem persists."
-      showBackButton={true}
-      showHomeButton={true}
-      showSearchButton={false}
+    <StatusScreen
+      code={error.digest ? `error · ${error.digest}` : "error"}
+      title="That screen failed to load"
+      detail="Something upstream returned an unexpected shape. The data is usually back within a minute — try again, or head to the terminal."
+      action={
+        <button
+          type="button"
+          onClick={reset}
+          className="figure ctl rounded-[4px] bg-ink px-4 py-2 text-[12px] font-medium text-surface hover:bg-white"
+        >
+          Try again
+        </button>
+      }
     />
   );
 }

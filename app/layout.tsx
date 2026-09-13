@@ -1,117 +1,95 @@
-import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next"
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { preconnect } from "react-dom";
+import { API_BASE_PUBLIC } from "@/lib/lighter/public";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, SITE_X } from "@/lib/site";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "LighterPulse - Real-time Analytics for Lighter.xyz",
-  description: "Comprehensive analytics platform for Lighter.xyz featuring real-time trading stats, funding rate comparisons, exchange insights, transaction explorer, and portfolio tracking for perpetual DEX traders.",
-  icons: {
-    icon: "/favicon.ico",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "LighterPulse — Lighter DEX Analytics, Funding Rates & Explorer",
+    template: "%s · LighterPulse",
   },
+  description: SITE_DESCRIPTION,
   keywords: [
+    "lighter",
     "lighter.xyz",
-    "lighterpulse", 
-    "crypto analytics",
-    "perpetual dex",
-    "trading analytics",
+    "lighterpulse",
+    "perp dex analytics",
+    "open interest",
     "funding rates",
-    "exchange stats",
+    "liquidations",
+    "trader leaderboard",
     "block explorer",
-    "portfolio tracker",
-    "defi analytics",
-    "crypto trading",
-    "perp trading",
-    "lighter protocol",
-    "real-time data",
-    "trading insights",
-    "crypto dashboard",
-    "defi dashboard",
-    "trading statistics",
-    "market analysis",
-    "crypto metrics"
+    "LIT token",
+    "zkLighter",
   ],
-  authors: [{ name: "LighterPulse Team" }],
-  creator: "LighterPulse",
-  publisher: "LighterPulse",
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
   robots: {
     index: true,
     follow: true,
     googleBot: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,
+      "max-video-preview": -1,
     },
   },
+  // No title, description or url here. Set at the root, every page inherited
+  // them, so each shared link previewed as the home page; left out, Next fills
+  // them in from each page's own title and description.
   openGraph: {
-    title: "LighterPulse - Real-time Analytics for Lighter.xyz",
-    description: "Comprehensive analytics platform for Lighter.xyz featuring real-time trading stats, funding rate comparisons, exchange insights, and portfolio tracking.",
-    url: "https://lighterpulse.xyz",
-    siteName: "LighterPulse",
-    images: [
-      {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
-        alt: "LighterPulse - Analytics for Lighter.xyz",
-      },
-    ],
-    locale: "en_US",
     type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    site: "@singhxbt",
-    creator: "@singhxbt",
-    title: "LighterPulse - Real-time Analytics for Lighter.xyz",
-    description: "Comprehensive analytics platform for Lighter.xyz featuring real-time trading stats, funding rate comparisons, and exchange insights.",
-    images: ["/logo.png"],
+    site: SITE_X.handle,
+    creator: SITE_X.handle,
   },
-  alternates: {
-    canonical: "https://lighterpulse.xyz",
-  },
-  category: "Technology",
-  classification: "Crypto Analytics Platform",
-  other: {
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
-    "apple-mobile-web-app-title": "LighterPulse",
-    "application-name": "LighterPulse",
-    "msapplication-TileColor": "#121218",
-    "theme-color": "#121218",
-  },
+  category: "Finance",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#070908",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
+  // The live stream and the browser-side fetches all go to Lighter's API;
+  // opening the connection early saves the DNS and TLS round trips.
+  preconnect(API_BASE_PUBLIC, { crossOrigin: "anonymous" });
+
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="icon" href="/logo.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/logo.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="format-detection" content="telephone=no" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en">
+      <body className={`${archivo.variable} ${plexMono.variable} antialiased`}>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

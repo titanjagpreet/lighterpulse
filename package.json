@@ -9,13 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@duneanalytics/client-sdk": "^0.2.5",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tabler/icons-react": "^3.34.1",
     "@types/dotenv": "^6.1.1",
     "@upstash/redis": "^1.35.3",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^2.0.0",
     "add": "^2.0.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -25,6 +25,7 @@
     "next": "^15.5.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
