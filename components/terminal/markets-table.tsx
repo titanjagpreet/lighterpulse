@@ -21,6 +21,7 @@ import {
 import { Sparkline } from "./charts";
 import { Delta, Figure, MagnitudeBar, RangeMarker } from "./primitives";
 import { WatchStar } from "./watchlist";
+import { TokenIcon } from "./token-icon";
 import { cn } from "@/lib/utils";
 
 type SortKey = "oiUsd" | "oiChange" | "volume24h" | "change24h" | "trades24h" | "symbol";
@@ -258,8 +259,9 @@ export function MarketsTable({
                     while the star sits above it as its own button. */}
                 <Link
                   href={`/markets/${m.symbol}`}
-                  className="flex items-baseline gap-2 after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
+                  className="flex items-center gap-2 after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                 >
+                  <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
                   <span className="text-[13px] font-semibold">{m.symbol}</span>
                   {tag && (
                     <span

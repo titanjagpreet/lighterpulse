@@ -13,6 +13,7 @@ import {
 import { ASSET_CLASS_LABEL, type AssetClass } from "@/lib/lighter/types";
 import { aprPct, ratePct, usdCompact } from "@/lib/format";
 import { Figure, Segmented } from "./primitives";
+import { TokenIcon } from "./token-icon";
 import { cn } from "@/lib/utils";
 
 type SortKey = "spread" | "lighter" | "oi" | "symbol";
@@ -201,9 +202,10 @@ export function FundingTable({ initial }: { initial: FundingRow[] }) {
                 {/* the symbol's overlay makes the whole row the link */}
                 <Link
                   href={`/markets/${r.symbol}`}
-                  className="text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
+                  className="flex min-w-0 items-center gap-2 text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                 >
-                  {r.symbol}
+                  <TokenIcon src={r.icon} symbol={r.symbol} size={16} />
+                  <span className="truncate">{r.symbol}</span>
                 </Link>
 
                 <Figure className={cn("text-right text-[12.5px] font-medium", tone(r.lighter))}>

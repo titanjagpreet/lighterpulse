@@ -8,6 +8,7 @@ import { MarketHeader } from "@/components/terminal/market-header";
 import { TradeTape } from "@/components/terminal/trade-tape";
 import { WatchStar } from "@/components/terminal/watchlist";
 import { LighterLink } from "@/components/terminal/lighter-link";
+import { TokenIcon } from "@/components/terminal/token-icon";
 import {
   AsOf,
   Chip,
@@ -109,6 +110,7 @@ export default async function MarketPage({
           </Link>
           <span className="text-ink-5">/</span>
         </nav>
+        <TokenIcon src={m.icon} symbol={m.symbol} size={22} />
         <h1 className="text-[20px] leading-none font-semibold tracking-[-0.02em]">{m.symbol}</h1>
         <WatchStar marketId={m.marketId} symbol={m.symbol} />
         <Chip>{ASSET_CLASS_LABEL[m.assetClass].toUpperCase()}</Chip>

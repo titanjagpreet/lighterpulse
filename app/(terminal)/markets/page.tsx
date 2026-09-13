@@ -130,6 +130,7 @@ export default async function MarketsPage() {
           change24h: m.change24h,
           volume24h: m.volume24h,
           active: m.active,
+          icon: m.icon,
         }))}
       />
 

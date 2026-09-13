@@ -9,6 +9,7 @@ import {
   RangedFigure,
 } from "@/components/terminal/range";
 import { WatchlistStrip } from "@/components/terminal/watchlist";
+import { TokenIcon } from "@/components/terminal/token-icon";
 import {
   AsOf,
   Chip,
@@ -328,7 +329,8 @@ export default async function OverviewPage() {
                     href={`/markets/${m.symbol}`}
                     className={`row-hit grid items-center gap-x-4 border-b border-hair py-2.5 last:border-0 ${MARKET_COLS}`}
                   >
-                    <span className="flex items-baseline gap-2">
+                    <span className="flex items-center gap-2">
+                      <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
                       <span className="text-[13px] font-semibold">{m.symbol}</span>
                       {ASSET_CLASS_TAG[m.assetClass] && (
                         <span className="figure text-[8.5px] tracking-[0.07em] text-ink-3">

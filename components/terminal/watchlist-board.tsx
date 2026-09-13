@@ -17,6 +17,7 @@ import {
   type Account,
 } from "@/lib/lighter/account";
 import { WatchStar } from "./watchlist";
+import { TokenIcon } from "./token-icon";
 import { Delta, Figure, SectionHeader } from "./primitives";
 import { addr, pctPlain, price, ratePct, usd, usdCompact, usdSigned } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,10 +30,11 @@ export interface BoardMarket {
   volume24h: number;
   oiUsd: number;
   funding: number | null;
+  icon: string | null;
 }
 
 const MARKET_COLS =
-  "grid-cols-[28px_minmax(96px,1fr)_minmax(96px,1fr)_minmax(64px,0.6fr)_minmax(96px,0.9fr)_minmax(96px,0.9fr)_minmax(84px,0.8fr)]";
+  "grid-cols-[28px_minmax(110px,1fr)_minmax(96px,1fr)_minmax(64px,0.6fr)_minmax(96px,0.9fr)_minmax(96px,0.9fr)_minmax(84px,0.8fr)]";
 const ACCOUNT_COLS =
   "grid-cols-[minmax(150px,1.3fr)_minmax(104px,1fr)_minmax(104px,1fr)_minmax(96px,0.9fr)_minmax(64px,0.5fr)_minmax(84px,0.7fr)_32px]";
 
@@ -61,6 +63,7 @@ export function WatchlistBoard({ markets }: { markets: BoardMarket[] }) {
         oiUsd: s?.oiUsd || base?.oiUsd || 0,
         volume24h: s?.volume24h || base?.volume24h || 0,
         funding: s?.funding ?? base?.funding ?? null,
+        icon: base?.icon ?? null,
       };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -95,7 +98,7 @@ export function WatchlistBoard({ markets }: { markets: BoardMarket[] }) {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <div className="min-w-[680px]">
+            <div className="min-w-[700px]">
               <div className={cn("label grid items-center gap-x-4 border-b border-edge pt-1 pb-2.5", MARKET_COLS)}>
                 <span />
                 <span>Market</span>
@@ -117,9 +120,10 @@ export function WatchlistBoard({ markets }: { markets: BoardMarket[] }) {
                   {/* the symbol's overlay makes the whole row the link; the star sits above it */}
                   <Link
                     href={`/markets/${m.symbol}`}
-                    className="text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
+                    className="flex min-w-0 items-center gap-2 text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                   >
-                    {m.symbol}
+                    <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
+                    <span className="truncate">{m.symbol}</span>
                   </Link>
                   <Figure className="text-right text-[12.5px]">{price(m.markPrice)}</Figure>
                   <Delta value={m.change24h} glyph={false} className="text-right text-[12px]" />

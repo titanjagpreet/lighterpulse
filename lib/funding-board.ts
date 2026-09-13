@@ -30,6 +30,7 @@ export interface FundingRow {
   oiUsd: number;
   lighter: number;
   venues: Record<OtherVenue, number | null>;
+  icon: string | null;
 }
 
 export interface Spread {
@@ -54,6 +55,7 @@ export function buildFundingRows(rates: FundingRate[], markets: Market[]): Fundi
     rows.push({
       marketId: m.marketId,
       symbol: m.symbol,
+      icon: m.icon ?? null,
       assetClass: m.assetClass,
       active: m.active,
       oiUsd: m.oiUsd,

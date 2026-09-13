@@ -8,6 +8,7 @@ import {
   MarketFieldLegend,
 } from "@/components/terminal/market-field";
 import { SeriesChart } from "@/components/terminal/charts";
+import { TokenIcon } from "@/components/terminal/token-icon";
 import { lighterApp, LIGHTER_DOCS, REFERRAL_REL } from "@/lib/links";
 import {
   Delta,
@@ -185,7 +186,8 @@ export default async function LandingPage() {
               href={`/markets/${m.symbol}`}
               className="row-hit grid grid-cols-[92px_88px_66px_96px_minmax(0,1fr)] items-center border-b border-hair py-3 last:border-0"
             >
-              <span className="flex items-baseline gap-2">
+              <span className="flex items-center gap-2">
+                <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
                 <span className="text-[13px] font-semibold">{m.symbol}</span>
                 {tag && (
                   <span

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import { Figure, MagnitudeBar } from "./primitives";
+import { TokenIcon } from "./token-icon";
 import { price, usdCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ export interface MoverMarket {
   change24h: number;
   volume24h: number;
   active: boolean;
+  icon: string | null;
 }
 
 /** A 40% move on a book nobody trades is noise, not news. */
@@ -69,7 +71,8 @@ export function Movers({ markets }: { markets: MoverMarket[] }) {
             href={`/markets/${m.symbol}`}
             className={cn("row-hit grid items-center gap-x-3 border-t border-hair py-1.5", COLS)}
           >
-            <span className="flex min-w-0 items-baseline gap-2">
+            <span className="flex min-w-0 items-center gap-2">
+              <TokenIcon src={m.icon} symbol={m.symbol} size={15} />
               <span className="truncate text-[12.5px] font-semibold">{m.symbol}</span>
               <Figure className="text-[10px] text-ink-4">{usdCompact(m.volume24h, 1)}</Figure>
             </span>

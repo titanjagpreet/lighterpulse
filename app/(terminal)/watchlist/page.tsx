@@ -28,6 +28,7 @@ export default async function WatchlistPage() {
         volume24h: m.volume24h,
         oiUsd: m.oiUsd,
         funding: m.funding,
+        icon: m.icon,
       }))}
     />
   );
