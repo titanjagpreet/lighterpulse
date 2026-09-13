@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { preconnect } from "react-dom";
+import { API_BASE_PUBLIC } from "@/lib/lighter/public";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -77,11 +80,16 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // The live stream and the browser-side fetches all go to Lighter's API;
+  // opening the connection early saves the DNS and TLS round trips.
+  preconnect(API_BASE_PUBLIC, { crossOrigin: "anonymous" });
+
   return (
     <html lang="en">
       <body className={`${archivo.variable} ${plexMono.variable} antialiased`}>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
