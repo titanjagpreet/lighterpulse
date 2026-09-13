@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useMarketStats } from "@/lib/lighter/use-market-stats";
+import { memo, useEffect, useMemo, useState } from "react";
+import { useMarketStats, type LiveMarket } from "@/lib/lighter/use-market-stats";
 import { useWatchlist } from "@/lib/use-watchlist";
 import {
   ASSET_CLASS_LABEL,
@@ -19,6 +18,7 @@ import {
   usdCompact,
 } from "@/lib/format";
 import { Sparkline } from "./charts";
+import { IntentLink } from "./intent-link";
 import { Delta, Figure, MagnitudeBar, RangeMarker } from "./primitives";
 import { WatchStar } from "./watchlist";
 import { TokenIcon } from "./token-icon";
@@ -26,8 +26,66 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "oiUsd" | "oiChange" | "volume24h" | "change24h" | "trades24h" | "symbol";
 
-const COLS =
-  "grid-cols-[24px_minmax(104px,1.1fr)_minmax(84px,0.95fr)_minmax(62px,0.7fr)_minmax(72px,0.75fr)_minmax(100px,1.1fr)_minmax(64px,0.7fr)_minmax(106px,1.15fr)_minmax(84px,0.9fr)_minmax(70px,0.75fr)_minmax(54px,0.55fr)_minmax(150px,1.55fr)]";
+/**
+ * What a row draws, and all the page sends: the table ships twice, as HTML
+ * and again as the data behind it.
+ */
+export type TableMarket = Pick<
+  Market,
+  | "marketId"
+  | "symbol"
+  | "assetClass"
+  | "active"
+  | "icon"
+  | "markPrice"
+  | "change24h"
+  | "oiUsd"
+  | "volume24h"
+  | "trades24h"
+  | "dayLow"
+  | "dayHigh"
+  | "rangePos"
+  | "funding"
+  | "maxLeverage"
+>;
+
+/** Widths of the open-interest and volume bars, px. */
+const OI_BAR = 96;
+const VOL_BAR = 104;
+
+/** The live fields a row draws. A row is replaced only when one of them moves. */
+const LIVE_FIELDS = [
+  "markPrice",
+  "change24h",
+  "oiUsd",
+  "volume24h",
+  "dayLow",
+  "dayHigh",
+  "rangePos",
+  "funding",
+] as const;
+
+/** The row with live values applied — or the same row, when nothing it draws moved. */
+function withLive(m: TableMarket, s: LiveMarket): TableMarket {
+  const dayLow = s.dayLow || m.dayLow;
+  const dayHigh = s.dayHigh || m.dayHigh;
+  const markPrice = s.markPrice || m.markPrice;
+  const span = dayHigh - dayLow;
+  const next: TableMarket = {
+    ...m,
+    markPrice,
+    change24h: s.change24h,
+    oiUsd: s.oiUsd || m.oiUsd,
+    volume24h: s.volume24h || m.volume24h,
+    dayLow,
+    dayHigh,
+    rangePos:
+      span > 0 ? Math.min(1, Math.max(0, (markPrice - dayLow) / span)) : m.rangePos,
+    // Already converted to an 8-hour ratio by the hook.
+    funding: s.funding ?? m.funding,
+  };
+  return LIVE_FIELDS.every((k) => next[k] === m[k]) ? m : next;
+}
 
 /**
  * All markets, filtered and sorted in the browser.
@@ -35,13 +93,18 @@ const COLS =
  * The rows are server-rendered first so the page is complete for crawlers and
  * on first paint; this component then takes over for interaction and subscribes
  * to `market_stats/all` — one subscription that streams every market at once.
+ *
+ * The stream lands about once a second. Redrawing all 150-odd rows each time
+ * kept a throttled phone's main thread busy for over a quarter of every second,
+ * so only rows whose figures moved re-render, and rows off screen skip layout
+ * and paint (`lazy-row`) until they scroll near.
  */
 export function MarketsTable({
   initial,
   sparks,
   oiChanges = {},
 }: {
-  initial: Market[];
+  initial: TableMarket[];
   /** marketId → 24 hourly closes. */
   sparks: Record<number, number[]>;
   /** marketId → 24h open-interest change, %, from recorded history. */
@@ -59,35 +122,20 @@ export function MarketsTable({
   // Server data wins on navigation.
   useEffect(() => setMarkets(initial), [initial]);
 
-  // Merge live prices over the server-rendered rows.
+  // Merge live prices over the server-rendered rows, keeping every row that
+  // did not move — and the array itself when none did.
   useEffect(() => {
     if (stats.size === 0) return;
-    setMarkets((prev) =>
-      prev.map((m) => {
+    setMarkets((prev) => {
+      let moved = false;
+      const next = prev.map((m) => {
         const s = stats.get(m.marketId);
-        if (!s) return m;
-        const dayLow = s.dayLow || m.dayLow;
-        const dayHigh = s.dayHigh || m.dayHigh;
-        const mark = s.markPrice || m.markPrice;
-        const span = dayHigh - dayLow;
-        return {
-          ...m,
-          markPrice: mark,
-          indexPrice: s.indexPrice || m.indexPrice,
-          lastPrice: s.lastPrice || m.lastPrice,
-          change24h: s.change24h,
-          oiUsd: s.oiUsd || m.oiUsd,
-          volume24h: s.volume24h || m.volume24h,
-          volume24hBase: s.volume24hBase || m.volume24hBase,
-          dayLow,
-          dayHigh,
-          rangePos:
-            span > 0 ? Math.min(1, Math.max(0, (mark - dayLow) / span)) : m.rangePos,
-          // Already converted to an 8-hour ratio by the hook.
-          funding: s.funding ?? m.funding,
-        };
-      }),
-    );
+        const row = s ? withLive(m, s) : m;
+        if (row !== m) moved = true;
+        return row;
+      });
+      return moved ? next : prev;
+    });
   }, [stats]);
 
   const counts = useMemo(() => {
@@ -110,7 +158,7 @@ export function MarketsTable({
     );
     const dir = sort === "symbol" ? 1 : -1;
     // Markets without a recorded change sort last either way.
-    const oiKey = (m: Market) => oiChanges[m.marketId] ?? -1e9;
+    const oiKey = (m: TableMarket) => oiChanges[m.marketId] ?? -1e9;
     return filtered.sort((a, b) =>
       sort === "symbol"
         ? a.symbol.localeCompare(b.symbol) * dir
@@ -203,12 +251,7 @@ export function MarketsTable({
       {/* table */}
       <div className="overflow-x-auto px-5">
         <div className="min-w-[1230px]">
-          <div
-            className={cn(
-              "label grid items-center gap-x-4 border-b border-edge pt-3.5 pb-3",
-              COLS,
-            )}
-          >
+          <div className="label markets-cols grid items-center gap-x-4 border-b border-edge pt-3.5 pb-3">
             {/* sr-only is absolutely positioned; wrapping it keeps the grid cell */}
             <span>
               <span className="sr-only">Watch</span>
@@ -238,130 +281,16 @@ export function MarketsTable({
             <span className="text-right">Day range</span>
           </div>
 
-          {rows.map((m) => {
-            const tag = ASSET_CLASS_TAG[m.assetClass];
-            const spark = sparks[m.marketId];
-            // The last hourly close, then the live mark — so the line ends now.
-            const trend = spark ? [...spark, m.markPrice] : [];
-            return (
-              <div
-                key={m.marketId}
-                className={cn(
-                  "row-hit relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
-                  COLS,
-                  !m.active && "opacity-55",
-                )}
-              >
-                <WatchStar marketId={m.marketId} symbol={m.symbol} />
-
-                {/* The symbol is the row's link. Its overlay makes the whole row
-                    clickable — middle-click and "open in new tab" included —
-                    while the star sits above it as its own button. */}
-                <Link
-                  href={`/markets/${m.symbol}`}
-                  className="flex items-center gap-2 after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
-                >
-                  <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
-                  <span className="text-[13px] font-semibold">{m.symbol}</span>
-                  {tag && (
-                    <span
-                      className={cn(
-                        "figure text-[8.5px] tracking-[0.07em]",
-                        m.assetClass === "commodity"
-                          ? "text-warn"
-                          : m.assetClass === "index"
-                            ? "text-info"
-                            : "text-ink-3",
-                      )}
-                    >
-                      {tag}
-                    </span>
-                  )}
-                </Link>
-
-                <Figure className="text-right text-[12.5px]">
-                  {price(m.markPrice)}
-                </Figure>
-
-                <Delta
-                  value={m.change24h}
-                  glyph={false}
-                  className="text-right text-[12.5px]"
-                />
-
-                <span className="flex justify-end">
-                  <Sparkline
-                    points={trend}
-                    width={64}
-                    height={20}
-                    dir={dirOf(m.change24h)}
-                  />
-                </span>
-
-                <span className="flex flex-col items-end gap-1">
-                  <Figure className="text-[12.5px]">{usdCompact(m.oiUsd, 1)}</Figure>
-                  <MagnitudeBar value={m.oiUsd} max={maxOi} width={96} />
-                </span>
-
-                <Delta
-                  value={oiChanges[m.marketId] ?? null}
-                  glyph={false}
-                  decimals={1}
-                  className="text-right text-[12px]"
-                />
-
-                <span className="flex flex-col items-end gap-1">
-                  <Figure className="text-[12.5px] text-ink-2">
-                    {usdCompact(m.volume24h, 1)}
-                  </Figure>
-                  <MagnitudeBar
-                    value={m.volume24h}
-                    max={maxVol}
-                    width={104}
-                    tone="neutral"
-                  />
-                </span>
-
-                <Figure
-                  className={cn(
-                    "text-right text-[12px]",
-                    m.funding == null
-                      ? "text-ink-4"
-                      : m.funding >= 0
-                        ? "text-up"
-                        : "text-down",
-                  )}
-                >
-                  {m.funding == null ? "—" : ratePct(m.funding)}
-                </Figure>
-
-                <Figure className="text-right text-[12px] text-ink-2">
-                  {num(m.trades24h)}
-                </Figure>
-
-                <Figure className="text-right text-[12px] text-ink-3">
-                  {m.maxLeverage}×
-                </Figure>
-
-                {m.active ? (
-                  <span className="flex items-center justify-end gap-2.5">
-                    <Figure className="text-[10px] text-ink-4">
-                      {compact(m.dayLow, 1)}
-                    </Figure>
-                    <RangeMarker pos={m.rangePos} dir={dirOf(m.change24h)} />
-                    <Figure className="text-[10px] text-ink-4">
-                      {compact(m.dayHigh, 1)}
-                    </Figure>
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-end gap-2">
-                    <span className="size-[5px] rounded-full bg-warn" />
-                    <Figure className="text-[10.5px] text-warn">Inactive</Figure>
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          {rows.map((m) => (
+            <MarketRow
+              key={m.marketId}
+              m={m}
+              spark={sparks[m.marketId]}
+              oiChange={oiChanges[m.marketId] ?? null}
+              oiFill={Math.round((m.oiUsd / maxOi) * OI_BAR)}
+              volFill={Math.round((m.volume24h / maxVol) * VOL_BAR)}
+            />
+          ))}
 
           {rows.length === 0 && (
             <p className="py-12 text-center text-[12.5px] text-ink-3">
@@ -380,6 +309,117 @@ export function MarketsTable({
     </div>
   );
 }
+
+/**
+ * One market. Memoised on its row, its sparkline (which never changes after
+ * load) and its bar fills in whole pixels — so a move in the biggest book,
+ * which rescales every bar, does not redraw rows whose bars stay put.
+ */
+const MarketRow = memo(function MarketRow({
+  m,
+  spark,
+  oiChange,
+  oiFill,
+  volFill,
+}: {
+  m: TableMarket;
+  spark: number[] | undefined;
+  oiChange: number | null;
+  /** Open-interest bar fill, px of OI_BAR. */
+  oiFill: number;
+  /** Volume bar fill, px of VOL_BAR. */
+  volFill: number;
+}) {
+  const tag = ASSET_CLASS_TAG[m.assetClass];
+  // The last hourly close, then the live mark — so the line ends now.
+  const trend = spark ? [...spark, m.markPrice] : [];
+  return (
+    <div
+      className={cn(
+        "row-hit lazy-row markets-cols relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
+        !m.active && "opacity-55",
+      )}
+    >
+      <WatchStar marketId={m.marketId} symbol={m.symbol} />
+
+      {/* The symbol is the row's link. Its overlay makes the whole row
+          clickable — middle-click and "open in new tab" included —
+          while the star sits above it as its own button. */}
+      <IntentLink
+        href={`/markets/${m.symbol}`}
+        className="flex items-center gap-2 after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
+      >
+        <TokenIcon src={m.icon} symbol={m.symbol} size={16} />
+        <span className="text-[13px] font-semibold">{m.symbol}</span>
+        {tag && (
+          <span
+            className={cn(
+              "figure text-[8.5px] tracking-[0.07em]",
+              m.assetClass === "commodity"
+                ? "text-warn"
+                : m.assetClass === "index"
+                  ? "text-info"
+                  : "text-ink-3",
+            )}
+          >
+            {tag}
+          </span>
+        )}
+      </IntentLink>
+
+      <Figure className="text-right text-[12.5px]">{price(m.markPrice)}</Figure>
+
+      <Delta value={m.change24h} glyph={false} className="text-right text-[12.5px]" />
+
+      <span className="flex justify-end">
+        <Sparkline points={trend} width={64} height={20} dir={dirOf(m.change24h)} />
+      </span>
+
+      <span className="flex flex-col items-end gap-1">
+        <Figure className="text-[12.5px]">{usdCompact(m.oiUsd, 1)}</Figure>
+        <MagnitudeBar value={oiFill} max={OI_BAR} width={OI_BAR} />
+      </span>
+
+      <Delta
+        value={oiChange}
+        glyph={false}
+        decimals={1}
+        className="text-right text-[12px]"
+      />
+
+      <span className="flex flex-col items-end gap-1">
+        <Figure className="text-[12.5px] text-ink-2">{usdCompact(m.volume24h, 1)}</Figure>
+        <MagnitudeBar value={volFill} max={VOL_BAR} width={VOL_BAR} tone="neutral" />
+      </span>
+
+      <Figure
+        className={cn(
+          "text-right text-[12px]",
+          m.funding == null ? "text-ink-4" : m.funding >= 0 ? "text-up" : "text-down",
+        )}
+      >
+        {m.funding == null ? "—" : ratePct(m.funding)}
+      </Figure>
+
+      <Figure className="text-right text-[12px] text-ink-2">{num(m.trades24h)}</Figure>
+
+      <Figure className="text-right text-[12px] text-ink-3">{m.maxLeverage}×</Figure>
+
+      {m.active ? (
+        <span className="flex items-center justify-end gap-2.5">
+          <Figure className="text-[10px] text-ink-4">{compact(m.dayLow, 1)}</Figure>
+          <RangeMarker pos={m.rangePos} dir={dirOf(m.change24h)} />
+          <Figure className="text-[10px] text-ink-4">{compact(m.dayHigh, 1)}</Figure>
+        </span>
+      ) : (
+        <span className="flex items-center justify-end gap-2">
+          <span className="size-[5px] rounded-full bg-warn" />
+          <Figure className="text-[10.5px] text-warn">Inactive</Figure>
+        </span>
+      )}
+    </div>
+  );
+});
 
 function SortHead({
   k,

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
-import { MarketsTable } from "@/components/terminal/markets-table";
+import {
+  MarketsTable,
+  type TableMarket,
+} from "@/components/terminal/markets-table";
 import { FundingClock } from "@/components/terminal/funding-clock";
+import { IntentLink } from "@/components/terminal/intent-link";
 import { Movers } from "@/components/terminal/movers";
 import {
   AsOf,
@@ -8,7 +12,6 @@ import {
   Label,
   MagnitudeBar,
 } from "@/components/terminal/primitives";
-import Link from "next/link";
 import { getMarkets, summarise } from "@/lib/lighter/markets";
 import { getPriceCharts } from "@/lib/lighter/charts";
 import { getOiLatest } from "@/lib/lighter/open-interest";
@@ -30,10 +33,37 @@ export default async function MarketsPage() {
     getPriceCharts().catch(() => null),
     getOiLatest().catch(() => null),
   ]);
-  const oiChanges: Record<number, number | null> = {};
-  for (const [id, v] of Object.entries(oiLatest?.markets ?? {})) oiChanges[Number(id)] = v.d24h;
   const markets = cached.data;
   const s = summarise(markets);
+
+  // The table ships twice — as HTML and again as the data behind it — so it
+  // gets only the fields it draws, rounded to what it can show.
+  const tableRows: TableMarket[] = markets.map((m) => ({
+    marketId: m.marketId,
+    symbol: m.symbol,
+    assetClass: m.assetClass,
+    active: m.active,
+    icon: m.icon,
+    markPrice: m.markPrice,
+    change24h: m.change24h,
+    oiUsd: Math.round(m.oiUsd),
+    volume24h: Math.round(m.volume24h),
+    trades24h: m.trades24h,
+    dayLow: m.dayLow,
+    dayHigh: m.dayHigh,
+    rangePos: m.rangePos == null ? null : Math.round(m.rangePos * 1000) / 1000,
+    funding: m.funding == null ? null : Math.round(m.funding * 1e8) / 1e8,
+    maxLeverage: m.maxLeverage,
+  }));
+  // A 20px-tall line cannot show more than five significant figures.
+  const trends: Record<number, number[]> = {};
+  for (const [id, closes] of Object.entries(sparks?.data ?? {})) {
+    trends[Number(id)] = closes.map((v) => Number(v.toPrecision(5)));
+  }
+  const oiChanges: Record<number, number | null> = {};
+  for (const [id, v] of Object.entries(oiLatest?.markets ?? {})) {
+    oiChanges[Number(id)] = v.d24h == null ? null : Math.round(v.d24h * 100) / 100;
+  }
 
   return (
     <div>
@@ -147,7 +177,7 @@ export default async function MarketsPage() {
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {markets.slice(0, 12).map((m) => (
-            <Link
+            <IntentLink
               key={m.marketId}
               href={`/markets/${m.symbol}`}
               className="ctl -my-1 flex items-center gap-2 py-1 hover:text-ink"
@@ -163,12 +193,12 @@ export default async function MarketsPage() {
               <Figure className="text-[10.5px] text-ink-3">
                 {usdCompact(m.oiUsd, 1)}
               </Figure>
-            </Link>
+            </IntentLink>
           ))}
         </div>
       </div>
 
-      <MarketsTable initial={markets} sparks={sparks?.data ?? {}} oiChanges={oiChanges} />
+      <MarketsTable initial={tableRows} sparks={trends} oiChanges={oiChanges} />
     </div>
   );
 }

@@ -227,6 +227,24 @@ body {
 .row-hit { transition: background-color 110ms linear; }
 .row-hit:hover { background-color: var(--color-panel); }
 
+/* Long live tables: a row off screen skips style, layout and paint until it
+   scrolls near. `--row-h` is the row's real height, so the page's length is
+   right before the rows have been drawn; the browser keeps each measured one. */
+.lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--row-h, 47px);
+}
+
+/* The markets table's columns — one class, where the same long utility was
+   repeated on every row of the page's HTML. */
+.markets-cols {
+  grid-template-columns:
+    24px minmax(104px, 1.1fr) minmax(84px, 0.95fr) minmax(62px, 0.7fr)
+    minmax(72px, 0.75fr) minmax(100px, 1.1fr) minmax(64px, 0.7fr)
+    minmax(106px, 1.15fr) minmax(84px, 0.9fr) minmax(70px, 0.75fr)
+    minmax(54px, 0.55fr) minmax(150px, 1.55fr);
+}
+
 .ctl {
   transition: background-color 120ms linear, border-color 120ms linear,
               color 120ms linear;

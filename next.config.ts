@@ -11,6 +11,19 @@ const nextConfig: NextConfig = {
   expireTime: 60 * 60,
 
   /**
+   * Token icons come from Lighter's CDN as full-size PNGs — some near 1 MB —
+   * drawn at 16px. Through the image optimiser each is a WebP of about a
+   * kilobyte. They rarely change, so a month's cache keeps re-optimising, and
+   * Vercel's image quota, negligible.
+   */
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "assets.lighter.xyz", pathname: "/fe/token/**" },
+    ],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
+
+  /**
    * The revamp renamed several routes. These keep old links, bookmarks and
    * search results working instead of dropping them on a 404.
    */

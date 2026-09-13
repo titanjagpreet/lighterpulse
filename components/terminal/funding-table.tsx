@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink } from "./intent-link";
 import { useMemo, useState } from "react";
 import { useMarketStats } from "@/lib/lighter/use-market-stats";
 import {
@@ -164,7 +164,7 @@ export function FundingTable({ initial }: { initial: FundingRow[] }) {
 
       {/* table */}
       <div className="overflow-x-auto px-5">
-        <div className="min-w-[980px]">
+        <div className="min-w-[980px] [--row-h:54px]">
           <div
             className={cn("label grid items-center gap-x-4 border-b border-edge pt-3.5 pb-3", COLS)}
           >
@@ -194,19 +194,19 @@ export function FundingTable({ initial }: { initial: FundingRow[] }) {
               <div
                 key={r.marketId}
                 className={cn(
-                  "row-hit relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
+                  "row-hit lazy-row relative isolate grid items-center gap-x-4 border-b border-hair py-2.5",
                   COLS,
                   !r.active && "opacity-55",
                 )}
               >
                 {/* the symbol's overlay makes the whole row the link */}
-                <Link
+                <IntentLink
                   href={`/markets/${r.symbol}`}
                   className="flex min-w-0 items-center gap-2 text-[13px] font-semibold after:absolute after:inset-0 after:z-[1] hover:underline hover:decoration-edge hover:underline-offset-4"
                 >
                   <TokenIcon src={r.icon} symbol={r.symbol} size={16} />
                   <span className="truncate">{r.symbol}</span>
-                </Link>
+                </IntentLink>
 
                 <Figure className={cn("text-right text-[12.5px] font-medium", tone(r.lighter))}>
                   {show(r.lighter)}

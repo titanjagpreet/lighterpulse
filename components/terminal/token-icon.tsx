@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +8,10 @@ import { cn } from "@/lib/utils";
  * A token's icon from Lighter's CDN — the same images Lighter's app uses — or
  * the symbol's first letter when there is none. Decorative: the symbol always
  * sits beside it, so it carries no alt text.
+ *
+ * The CDN serves full-size PNGs, some close to 1 MB, for an icon drawn at
+ * 16px, so it goes through the image optimiser, which returns a WebP of a
+ * kilobyte or so. SVGs pass through untouched.
  *
  * The image is only requested after mount. A failure that happened before
  * hydration would never reach `onError`, leaving a broken-image glyph; a
@@ -33,17 +38,13 @@ export function TokenIcon({
 
   if (state === "ready" && src) {
     return (
-      // A plain <img>: these are tiny remote SVGs, and next/image would spend
-      // the image-optimisation quota proxying them for no visible gain.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
         alt=""
         aria-hidden="true"
         width={size}
         height={size}
         loading="lazy"
-        decoding="async"
         draggable={false}
         onError={() => setState("failed")}
         className={cn("shrink-0 rounded-full", className)}
