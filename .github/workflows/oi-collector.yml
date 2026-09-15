@@ -1,12 +1,15 @@
 name: Open interest collector
 
-# Lighter publishes no open-interest history, so this records it. Scheduled
-# workflows run only from the default branch, can be delayed at busy times
-# (the top of the hour most of all — hence the offsets), and GitHub disables
-# them after 60 days without repository activity.
+# A backstop, not the main trigger. The website's /api/collector, called every
+# 15 minutes by an external scheduler, records history. GitHub's scheduled
+# workflows are best-effort: set to every 15 minutes, this one ran only every
+# 2–7 hours. Hourly is enough for a backstop, since a second run in the same 15
+# minutes adds nothing, and it stays well inside the free minutes if the
+# repository is ever made private. Scheduled workflows run only from the
+# default branch, and GitHub disables them after 60 days without activity.
 on:
   schedule:
-    - cron: "4,19,34,49 * * * *"
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 concurrency:

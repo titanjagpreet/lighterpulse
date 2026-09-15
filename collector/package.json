@@ -7,7 +7,7 @@
     "node": ">=22.9"
   },
   "scripts": {
-    "snapshot": "node --env-file-if-exists=../.env.local snapshot.mjs"
+    "snapshot": "node --env-file-if-exists=../.env.local run.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0"
