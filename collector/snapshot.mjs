@@ -2,29 +2,34 @@
  * History collector.
  *
  * Lighter reports open interest per market only as a live value — there is no
- * history endpoint — so the history exists only if we record it. The same is
- * true of LIT staked, LIT burned and every pool's TVL. Every day not recorded
- * is lost for good.
+ * history endpoint, and candles carry no open interest — so the history exists
+ * only if we record it. The same is true of LIT staked, LIT burned and every
+ * pool's TVL. Every run missed is a gap for good.
  *
- * Runs every 15 minutes on GitHub Actions (Vercel Hobby can only schedule once
- * a day). Each run:
+ * `runSnapshot` is meant to run every 15 minutes, and two things call it:
+ *   · /api/collector on the website, hit by an external scheduler. This is the
+ *     primary trigger: GitHub's scheduled workflows are best-effort, and this
+ *     one ran only every 2–7 hours, which left the history in pieces.
+ *   · `npm run snapshot` (run.mjs) — the GitHub workflow's hourly backstop, or
+ *     a run by hand.
+ * A second run in the same 15 minutes adds nothing, so overlapping triggers
+ * are harmless.
+ *
+ * Each run:
  *   1. stores open interest in Postgres — 15-minute rows kept 30 days, and one
  *      row per hour kept permanently;
  *   2. once an hour, stores LIT staked, LIT burned, LIT awaiting burn and the
  *      TVL of the LLP and every vault over $10K;
  *   3. publishes everything the website reads to Redis.
  *
- * The website never queries Postgres. Neon's free tier suspends compute for the
- * rest of the month once its CU-hours are spent; if page traffic could wake the
+ * Pages never query Postgres. Neon's free tier suspends compute for the rest of
+ * the month once its CU-hours are spent; if page traffic could wake the
  * database, a busy week could silently stop the recording itself.
  */
 import { neon } from "@neondatabase/serverless";
 
 const API = process.env.LIGHTER_API_BASE ?? "https://mainnet.zklighter.elliot.ai";
 const ETH_RPC = process.env.ETH_RPC_URL ?? "https://ethereum-rpc.publicnode.com";
-const DATABASE_URL = process.env.DATABASE_URL;
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 const MIN = 60_000;
 const Q = 15 * MIN;
@@ -48,15 +53,22 @@ const DEAD_HOLDER = "00000000000000000000000000000000000000000000000000000000000
 /** Vaults below this are not worth a row an hour. */
 const POOL_TVL_FLOOR = 10_000;
 
-if (!DATABASE_URL) {
-  console.error("✗ DATABASE_URL is not set");
-  process.exit(1);
-}
-const sql = neon(DATABASE_URL);
-
 const floorTo = (ms, step) => Math.floor(ms / step) * step;
 const iso = (ms) => new Date(ms).toISOString();
 const pct = (now, then) => (then > 0 && Number.isFinite(now) ? ((now - then) / then) * 100 : null);
+
+/**
+ * One collector run. Resolves with a one-line summary; throws when open
+ * interest could not be recorded. Redis is optional — without it the run
+ * records to Postgres and publishes nothing.
+ */
+export async function runSnapshot({ databaseUrl, redisUrl, redisToken }) {
+  if (!databaseUrl) throw new Error("DATABASE_URL is not set");
+  return collect({
+    sql: neon(databaseUrl),
+    redis: redisUrl && redisToken ? redisPipeline(redisUrl, redisToken) : null,
+  });
+}
 
 /* ── Lighter ─────────────────────────────────────────────────── */
 
@@ -129,25 +141,26 @@ async function fetchBurned() {
 
 /* ── Redis (Upstash REST) ────────────────────────────────────── */
 
-const hasRedis = Boolean(REDIS_URL && REDIS_TOKEN);
-
-async function redis(commands) {
-  const res = await fetch(`${REDIS_URL}/pipeline`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${REDIS_TOKEN}`, "content-type": "application/json" },
-    body: JSON.stringify(commands),
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) throw new Error(`redis HTTP ${res.status}`);
-  const out = await res.json();
-  const failed = out.find((r) => r.error);
-  if (failed) throw new Error(`redis: ${failed.error}`);
-  return out.map((r) => r.result);
+/** Sends a batch of commands in one request; resolves with their results in order. */
+function redisPipeline(url, token) {
+  return async (commands) => {
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(commands),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`redis HTTP ${res.status}`);
+    const out = await res.json();
+    const failed = out.find((r) => r.error);
+    if (failed) throw new Error(`redis: ${failed.error}`);
+    return out.map((r) => r.result);
+  };
 }
 
 /* ── schema — idempotent, cheap, and lets a fresh database just work ── */
 
-async function ensureSchema() {
+async function ensureSchema(sql) {
   await sql`create table if not exists markets (
     market_id  smallint    primary key,
     symbol     text        not null,
@@ -195,7 +208,8 @@ async function ensureSchema() {
 
 /* ── run ─────────────────────────────────────────────────────── */
 
-async function main() {
+async function collect(db) {
+  const { sql, redis } = db;
   const started = Date.now();
   const bucket = floorTo(started, Q);
   const hour = floorTo(started, HOUR);
@@ -217,7 +231,7 @@ async function main() {
   const ois = rows.map((r) => r.oi);
   const marks = rows.map((r) => r.mark);
 
-  await ensureSchema();
+  await ensureSchema(sql);
   await sql.transaction([
     sql`insert into markets (market_id, symbol)
         select * from unnest(${ids}::smallint[], ${symbols}::text[])
@@ -236,10 +250,10 @@ async function main() {
   const [{ since }] = await sql`select min(bucket) as since from oi_1h`;
   const sinceIso = since ? new Date(since).toISOString() : null;
 
-  if (!hasRedis) {
-    const pools = await recordPoolsSafely(hour, null);
-    console.log(`✓ recorded ${rows.length} markets at ${iso(bucket)}${pools.note} (Redis not configured — nothing published)`);
-    return finish(started, bucket, rows.length);
+  if (!redis) {
+    const pools = await recordPoolsSafely(db, hour, null);
+    return finish(sql, started, bucket, rows.length,
+      `✓ recorded ${rows.length} markets at ${iso(bucket)}${pools.note} (Redis not configured — nothing published)`);
   }
 
   /* changes over 1h / 4h / 24h / 7d — the latest snapshot within a slack
@@ -291,9 +305,9 @@ async function main() {
   const poolsDue = !meta.poolsAt || Date.now() - Date.parse(meta.poolsAt) > POOLS_EVERY;
 
   let seriesCount = 0;
-  if (publishSeries) seriesCount = await publishAllSeries(bucket, hour, sinceIso, nowIso);
+  if (publishSeries) seriesCount = await publishAllSeries(db, bucket, hour, sinceIso, nowIso);
 
-  const pools = poolsDue ? await recordPoolsSafely(hour, nowIso) : { ok: false, note: "" };
+  const pools = poolsDue ? await recordPoolsSafely(db, hour, nowIso) : { ok: false, note: "" };
 
   await redis([
     ["SET", `${PREFIX}:latest`, JSON.stringify({ at: iso(bucket), since: sinceIso, markets })],
@@ -311,14 +325,12 @@ async function main() {
     ],
   ]);
 
-  console.log(
-    `✓ recorded ${rows.length} markets at ${iso(bucket)} · published latest${publishSeries ? ` + ${seriesCount} series` : ""}${pools.note} · since ${sinceIso ?? "now"}`,
-  );
-  return finish(started, bucket, rows.length);
+  return finish(sql, started, bucket, rows.length,
+    `✓ recorded ${rows.length} markets at ${iso(bucket)} · published latest${publishSeries ? ` + ${seriesCount} series` : ""}${pools.note} · since ${sinceIso ?? "now"}`);
 }
 
 /** Aligned arrays per market: 24h at 15 minutes, 30 days hourly, all days daily. */
-async function publishAllSeries(bucket, hour, sinceIso, nowIso) {
+async function publishAllSeries({ sql, redis }, bucket, hour, sinceIso, nowIso) {
   const m15Start = bucket - 95 * Q;
   const h1Start = hour - 719 * HOUR;
 
@@ -379,9 +391,9 @@ async function publishAllSeries(bucket, hour, sinceIso, nowIso) {
 /* ── pools and LIT supply ────────────────────────────────────── */
 
 /** A failure here is logged and skipped — it must never cost an open-interest run. */
-async function recordPoolsSafely(hour, publishAt) {
+async function recordPoolsSafely(db, hour, publishAt) {
   try {
-    const note = await recordPools(hour, publishAt);
+    const note = await recordPools(db, hour, publishAt);
     return { ok: true, note };
   } catch (err) {
     console.error("⚠ pool recording failed:", err instanceof Error ? err.message : err);
@@ -389,7 +401,7 @@ async function recordPoolsSafely(hour, publishAt) {
   }
 }
 
-async function recordPools(hour, publishAt) {
+async function recordPools({ sql, redis }, hour, publishAt) {
   const [staking, buyback, burned] = await Promise.all([
     fetchAccount(STAKING_POOL_INDEX),
     fetchAccount(BUYBACK_ACCOUNT_INDEX),
@@ -548,12 +560,8 @@ function safeJson(raw) {
   }
 }
 
-async function finish(started, bucket, count) {
+async function finish(sql, started, bucket, count, message) {
   await sql`insert into collector_runs (started_at, bucket, markets, duration_ms)
             values (${iso(started)}, ${iso(bucket)}, ${count}, ${Date.now() - started})`;
+  return { message, markets: count, bucket: iso(bucket), durationMs: Date.now() - started };
 }
-
-main().catch((err) => {
-  console.error("✗ collector failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});

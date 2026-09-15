@@ -54,7 +54,8 @@ export async function GET() {
       status: healthy ? "ok" : "degraded",
       time: new Date().toISOString(),
       cache: redisOk === null ? "not configured" : redisOk ? "ok" : "unreachable",
-      // Open-interest recording runs on GitHub Actions every 15 minutes.
+      // Open-interest recording runs every 15 minutes: /api/collector, called by an
+      // external scheduler, with an hourly GitHub Actions run as the backstop.
       oiCollector: collector
         ? {
             lastRunMinutesAgo: Math.round((Date.now() - Date.parse(collector.lastRunAt)) / 60_000),

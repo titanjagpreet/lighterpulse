@@ -6,9 +6,10 @@ import type { OiLatest, OiSeries } from "../oi";
 /**
  * Open-interest history, as published to Redis by the collector.
  *
- * The site deliberately never reads Postgres: the collector precomputes every
- * view it needs, so page traffic cannot wake the database or spend the free
- * tier's compute hours that recording depends on. Missing keys (collector not
+ * Pages deliberately never read Postgres: the collector precomputes every view
+ * they need, so page traffic cannot wake the database or spend the free tier's
+ * compute hours that recording depends on. Only the collector, on its schedule,
+ * touches it. Missing keys (collector not
  * yet running, or Redis unavailable) resolve to null and the UI says so.
  */
 
