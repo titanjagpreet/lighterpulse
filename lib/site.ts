@@ -13,8 +13,8 @@ export const SITE_DESCRIPTION =
 
 /** The site's account on X. */
 export const SITE_X = {
-  handle: "@singhxbt",
-  url: "https://x.com/singhxbt",
+  handle: "@Lighter_xyz",
+  url: "https://x.com/Lighter_xyz",
 } as const;
 
 /** An absolute URL on this site, e.g. `siteUrl("/markets/BTC")`. */
